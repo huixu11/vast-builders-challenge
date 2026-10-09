@@ -18,11 +18,13 @@ import argparse
 import os
 import socket
 import sys
+import textwrap
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import pyarrow as pa
 import pyarrow.compute as pc
+import urllib3
 import vastdb
 
 from common import APP_DIR, log, read_json, vss_client
@@ -54,6 +56,7 @@ def setting(name: str) -> str:
 
 
 def connect():
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     return vastdb.connect(endpoint=setting("S3_ENDPOINT"), access=setting("ACCESS_KEY"), secret=setting("SECRET_KEY"),
                           ssl_verify=False)
 
@@ -147,7 +150,7 @@ def joined_alerts() -> pa.Table:
     with connect().transaction() as tx:
         bucket = tx.bucket(setting("VASTDB_BUCKET"))
         alerts = bucket.schema(SCHEMA).table("alerts").select(
-            columns=["event_id", "severity", "title", "source"]).read_all()
+            columns=["event_id", "severity", "title", "site_id", "camera", "source"]).read_all()
         vss_table = bucket.schema(setting("VDB_SCHEMA")).table(setting("VDB_COLLECTION"))
         names = [c.name for c in vss_table.columns()]
         caption = next((c for c in CAPTION_COLUMNS if c in names), None)
@@ -162,8 +165,14 @@ def main() -> int:
     ap.add_argument("--join", action="store_true", help="print alerts joined with the VSS captions and exit")
     args = ap.parse_args()
     if args.join:
-        for row in joined_alerts().to_pylist():
-            print(row)
+        joined = joined_alerts()
+        print(f"{SCHEMA}.alerts joined on source with {setting('VDB_SCHEMA')}.{setting('VDB_COLLECTION')} "
+              f"(captions by Cosmos Reason): {joined.num_rows} alert(s)")
+        for row in joined.to_pylist():
+            caption = next((row[c] for c in CAPTION_COLUMNS if row.get(c)), "(no caption)")
+            print(f"\n[{row['severity'].upper()}] {row['title']}: {row['site_id']}, camera {row['camera']}")
+            print(f"  segment  {row['source'].rsplit('/', 1)[-1]}")
+            print(textwrap.fill(caption, width=110, initial_indent="  Cosmos   ", subsequent_indent=" " * 11))
         return 0
     sites = {s for s in (args.sites or "").split(",") if s} or None
     written = export(sites)
