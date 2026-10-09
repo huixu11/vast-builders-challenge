@@ -24,6 +24,12 @@
       lib_open_res: "Resources & bottlenecks", lib_open_replay: "Multi-camera replay", lib_ask: "Ask about this video",
       lib_ask_q: "What happens on {cam} at {site} between {t0} and {t1}? Any safety or efficiency issues?",
       lib_empty: "No videos match this filter.", close: "Close",
+      roi_title: "Impact estimate · idle cost per shift", roi_scope: "Main floor · {c} cameras · {m} min of video per camera, extrapolated to a {h} h shift",
+      roi_labor: "Idle labor", roi_labor_sub: "{p} people idle on average → {h} person-hours",
+      roi_machine: "Idle machines", roi_machine_sub: "{m} machines stationary on average → {h} machine-hours",
+      roi_recover: "Recoverable ({s}%)", roi_year: "≈ {v} per year at {n} shifts",
+      roi_wage: "Labor cost", roi_mcost: "Machine cost", roi_hours: "Shift length", roi_share: "Recoverable share", roi_shifts: "Shifts per year",
+      roi_note: "Estimate. “Idle” means stationary in the video, and some of that is real work at a station. Camera views are assumed not to overlap and the sampled minutes are assumed typical of the shift. Adjust the assumptions to your site.",
       top_flags: "Top operational flags", top_recs: "Recommended actions", view_all: "View all",
       people: "people", idle: "idle", machines: "machines", avg: "avg", moving: "moving",
       status_ok: "Normal", status_warn: "Watch", status_alert: "Alert", scenario: "scenario",
@@ -103,6 +109,12 @@
       lib_open_res: "资源与瓶颈", lib_open_replay: "多机位回放", lib_ask: "就此视频提问",
       lib_ask_q: "{site} 的 {cam} 在 {t0}–{t1} 之间发生了什么？有没有安全或效率问题？",
       lib_empty: "没有符合筛选条件的视频。", close: "关闭",
+      roi_title: "影响估算 · 每班空闲成本", roi_scope: "主仓库 · {c} 个机位 · 每个机位 {m} 分钟视频，外推到 {h} 小时班次",
+      roi_labor: "人员空闲", roi_labor_sub: "平均 {p} 人空闲 → {h} 人时",
+      roi_machine: "设备闲置", roi_machine_sub: "平均 {m} 台设备静止 → {h} 机时",
+      roi_recover: "可回收（{s}%）", roi_year: "按每年 {n} 班 ≈ {v}/年",
+      roi_wage: "人工成本", roi_mcost: "设备成本", roi_hours: "班次时长", roi_share: "可回收比例", roi_shifts: "每年班次",
+      roi_note: "估算值。“空闲”指视频中静止不动，其中一部分是在工位上正常作业；假设各机位画面不重叠，且采样的几分钟能代表整个班次。请按实际情况调整假设。",
       top_flags: "主要运营标记", top_recs: "建议措施", view_all: "查看全部",
       people: "人", idle: "空闲", machines: "设备", avg: "平均", moving: "移动",
       status_ok: "正常", status_warn: "关注", status_alert: "告警", scenario: "场景",
@@ -167,8 +179,10 @@
     get(k, d) { try { const v = localStorage.getItem("wops." + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
     set(k, v) { try { localStorage.setItem("wops." + k, JSON.stringify(v)); } catch { /* storage unavailable */ } },
   };
+  const ROI_DEFAULTS = { wage: 25, machine: 12, hours: 8, share: 25, shifts: 250 };
   const S = {
     lang: saved.get("lang", "en") === "zh" ? "zh" : "en",
+    roi: { ...ROI_DEFAULTS, ...saved.get("roi", {}) },
     acked: new Set(saved.get("acked", [])),
     data: null, idx: null, byId: null, version: null, kind: null, newIds: new Set(),
     view: "overview", arg: "", cleanups: [], boxes: true,
@@ -806,6 +820,56 @@
   const recItem = (r, i) => `<a class="rec-item" href="#resources/${enc(r.rec_id)}"><span class="rec-num">${i + 1}</span>
       <span><b>${esc(r.title || "")}</b><small>${esc(r.expected_impact || r.action || "")}</small></span></a>`;
 
+  function roiNumbers() {
+    const cams = (S.data.util.cameras || []).filter((c) => siteKind(S.idx.site[c.site_id]) === "continuous" && num(c.totals?.duration_sec));
+    let idlePeople = 0, idleMachines = 0, sec = 0;
+    for (const c of cams) {
+      const t = c.totals, d = num(t.duration_sec);
+      idlePeople += num(t.idle_person_seconds) / d;
+      idleMachines += num(t.machines_avg) * (1 - num(t.machine_moving_ratio));
+      sec = Math.max(sec, d);
+    }
+    const R = S.roi, laborH = idlePeople * R.hours, machineH = idleMachines * R.hours;
+    const laborCost = laborH * R.wage, machineCost = machineH * R.machine;
+    const recoverable = (laborCost + machineCost) * R.share / 100;
+    return { cams: cams.length, minutes: sec / 60, idlePeople, idleMachines, laborH, machineH, laborCost, machineCost, recoverable, yearly: recoverable * R.shifts };
+  }
+
+  const money = (v) => "$" + Math.round(num(v)).toLocaleString("en-US");
+
+  function roiTiles(n) {
+    return `<div class="roi-tile"><span>${tr("roi_labor")}</span><b>${money(n.laborCost)}</b><small>${tr("roi_labor_sub", { p: fmtNum(n.idlePeople), h: fmtNum(n.laborH) })}</small></div>
+      <div class="roi-tile"><span>${tr("roi_machine")}</span><b>${money(n.machineCost)}</b><small>${tr("roi_machine_sub", { m: fmtNum(n.idleMachines), h: fmtNum(n.machineH) })}</small></div>
+      <div class="roi-tile hi"><span>${tr("roi_recover", { s: fmtNum(S.roi.share) })}</span><b>${money(n.recoverable)}</b><small>${tr("roi_year", { v: money(n.yearly), n: fmtNum(S.roi.shifts) })}</small></div>`;
+  }
+
+  function roiCard() {
+    const n = roiNumbers();
+    if (!n.cams) return "";
+    const field = (key, label, step, unit) => `<label class="roi-in"><span>${tr(label)}</span>
+      <span class="roi-field"><input type="number" min="0" step="${step}" data-roi="${key}" value="${esc(S.roi[key])}">${unit ? `<small>${unit}</small>` : ""}</span></label>`;
+    return `<section class="card roi">
+      <div class="card-h"><h2>${ICON.spark}${tr("roi_title")}</h2><span class="muted small">${tr("roi_scope", { c: n.cams, m: fmtNum(n.minutes), h: fmtNum(S.roi.hours) })}</span></div>
+      <div class="roi-body">
+        <div class="roi-tiles">${roiTiles(n)}</div>
+        <div class="roi-inputs">${field("wage", "roi_wage", 1, "$/h")}${field("machine", "roi_mcost", 1, "$/h")}${field("hours", "roi_hours", 0.5, "h")}${field("share", "roi_share", 5, "%")}${field("shifts", "roi_shifts", 10, "")}</div>
+      </div>
+      <p class="roi-note">${tr("roi_note")}</p>
+    </section>`;
+  }
+
+  function bindRoi(el) {
+    $$("[data-roi]", el).forEach((input) => input.addEventListener("input", () => {
+      const v = Number(input.value);
+      if (!Number.isFinite(v) || v < 0) return;
+      S.roi[input.dataset.roi] = v;
+      saved.set("roi", S.roi);
+      const n = roiNumbers();
+      $(".roi-tiles", el).innerHTML = roiTiles(n);
+      $(".roi .card-h .muted", el).textContent = tr("roi_scope", { c: n.cams, m: fmtNum(n.minutes), h: fmtNum(S.roi.hours) });
+    }));
+  }
+
   function renderOverview(el) {
     const o = S.data.overview || {}, k = o.kpis || {};
     const open = S.data.events.filter((e) => !S.acked.has(e.event_id));
@@ -827,6 +891,7 @@
         ${kpiCard(ICON.flag, tr("kpi_flags"), String(k.flags ?? S.data.util.flags.length), tr("kpi_flags_sub"), "violet")}
         ${kpiCard(ICON.camera, tr("kpi_footage"), String(k.cameras ?? 0), tr("kpi_footage_sub", { v: nVideos, m: fmtNum(k.video_minutes), n: k.segments ?? 0 }), "blue")}
       </section>
+      ${roiCard()}
       <section class="ov-grid">
         <div class="card">
           <div class="card-h"><h2>${ICON.camera}${tr("cam_status")}</h2><span class="card-links"><a class="link" href="#library">${tr("lib_link", { n: nVideos })} →</a><a class="link" href="#replay">${tr("open_wall")} →</a></span></div>
@@ -843,6 +908,7 @@
             <div class="rec-items">${recs.map(recItem).join("") || emptyState(ICON.spark, tr("no_recs"))}</div></div>
         </div>
       </section>`;
+    bindRoi(el);
     $$("video.thumb", el).forEach((v) => {
       onCleanup(() => stopVideo(v));
       if (!v.classList.contains("hover-play")) return;
