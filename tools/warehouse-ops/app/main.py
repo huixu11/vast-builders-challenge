@@ -178,6 +178,19 @@ def api_videos() -> dict:
     return {**snap.videos, "sites": snap.sites, "data_dir_kind": snap.kind, "version": snap.version}
 
 
+@app.get("/api/library")
+def api_library() -> dict:
+    return app_data.library(store.snapshot())
+
+
+@app.get("/api/thumbs.jpg", include_in_schema=False)
+def api_thumbs():
+    path = app_data.thumbs_path(store.snapshot())
+    if not path:
+        return JSONResponse({"error": "no thumbnails"}, status_code=404)
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "max-age=600"})
+
+
 @app.get("/api/segments")
 def api_segments(site_id: str | None = None, camera: str | None = None) -> list[dict]:
     return [s for s in store.snapshot().segments

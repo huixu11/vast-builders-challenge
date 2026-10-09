@@ -273,6 +273,87 @@ def camera_cards(snap: Snapshot) -> list[dict]:
     return cards
 
 
+THUMBS_JSON, THUMBS_JPG = "data_thumbs.json", "data_thumbs.jpg"
+SEV_ORDER = ("high", "medium", "low")
+VIEW_CONFIRM = 0.5  # a synchronized view only counts as showing an event when its own label is this confident
+
+
+def _thumbs(data_dir: str) -> dict:
+    try:
+        with open(os.path.join(data_dir, THUMBS_JSON), encoding="utf-8") as f:
+            meta = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return meta if isinstance(meta, dict) and os.path.exists(os.path.join(data_dir, THUMBS_JPG)) else {}
+
+
+def library(snap: Snapshot) -> dict:
+    """One row per indexed video (chunk) with its analysis coverage and headline metrics."""
+    rows_by_video: dict[str, list[dict]] = {}
+    for row in snap.segments:
+        rows_by_video.setdefault(row.get("original_video") or "", []).append(row)
+    events_by_video: dict[str, list[dict]] = {}
+    for e in snap.events:
+        videos = {e.get("original_video")}
+        videos |= {(snap.seg_by_source.get(v.get("source") or "") or {}).get("original_video") for v in dicts(e.get("views"))
+                   if v.get("label") not in (None, "", "none") and num(v.get("confidence")) >= VIEW_CONFIRM}
+        for video in videos - {None, ""}:
+            events_by_video.setdefault(video, []).append(e)
+    thumbs = _thumbs(snap.data_dir)
+    tiles = thumbs.get("tiles") or {}
+
+    items = []
+    for site in sorted(snap.sites, key=lambda s: snap.site_kind(str(s.get("site_id"))) != "continuous"):
+        sid = str(site.get("site_id") or "")
+        for cam in dicts(site.get("cameras")):
+            cname = str(cam.get("camera") or "")
+            for ch in sorted(dicts(cam.get("chunks")), key=lambda c: num(c.get("scene_t0"))):
+                video = ch.get("original_video") or ""
+                rows = rows_by_video.get(video, [])
+                people = [r.get("people") or {} for r in rows]
+                idle = sum(num(p.get("idle")) for p in people)
+                moving = sum(num(p.get("moving")) for p in people)
+                machines = [r.get("machines") or {} for r in rows]
+                m_total = [sum(num((m.get(k) or {}).get("total")) for k in m) for m in machines]
+                m_moving = [sum(num((m.get(k) or {}).get("moving")) for k in m) for m in machines]
+                t0, t1 = num(ch.get("scene_t0")), num(ch.get("scene_t1"))
+                evs = events_by_video.get(video, [])
+                flags = [f for f in snap.flags if f.get("site_id") == sid and f.get("camera") == cname
+                         and num(f.get("scene_t0")) < t1 and num(f.get("scene_t1")) > t0]
+                filename = ch.get("filename") or basename(video)
+                items.append({
+                    "site_id": sid, "site_title": snap.site_title(sid), "kind": snap.site_kind(sid),
+                    "camera": cname, "view": cam.get("view") or "", "chunk_index": ch.get("chunk_index"),
+                    "original_video": video, "filename": filename, "scene_t0": t0, "scene_t1": t1,
+                    "segments_total": len(dicts(ch.get("segments"))), "segments_analyzed": len(rows),
+                    "people_avg": round(sum(num(p.get("per_frame_mean", p.get("per_frame_median"))) for p in people)
+                                        / len(people), 1) if people else None,
+                    "idle_ratio": round(idle / (idle + moving), 3) if idle + moving else None,
+                    "machines_avg": round(sum(m_total) / len(m_total), 1) if m_total else None,
+                    "machines_moving_avg": round(sum(m_moving) / len(m_moving), 1) if m_moving else None,
+                    "event_ids": [e.get("event_id") for e in evs],
+                    "max_severity": next((s for s in SEV_ORDER if any(e.get("severity") == s for e in evs)), None),
+                    "flag_ids": [f.get("flag_id") for f in flags],
+                    "caption": next((str(r.get("vlm_summary")) for r in rows if r.get("vlm_summary")), ""),
+                    "thumb": tiles.get(filename),
+                })
+    return {
+        "version": snap.version,
+        "summary": {"videos": len(items), "cameras": len({(i["site_id"], i["camera"]) for i in items}),
+                    "sites": len(snap.sites), "segments": sum(i["segments_total"] for i in items),
+                    "segments_analyzed": sum(i["segments_analyzed"] for i in items),
+                    "minutes": round(sum(i["scene_t1"] - i["scene_t0"] for i in items) / 60, 1),
+                    "with_events": sum(bool(i["event_ids"]) for i in items)},
+        "thumbs": ({k: thumbs.get(k) for k in ("tile_w", "tile_h", "cols", "rows")} if tiles else None),
+        "items": items,
+    }
+
+
+def thumbs_path(snap: Snapshot) -> str | None:
+    path = os.path.join(snap.data_dir, THUMBS_JPG)
+    return path if os.path.exists(path) else None
+
+
 def overview(snap: Snapshot) -> dict:
     cards = camera_cards(snap)
     floor = [c for c in cards if c["kind"] == "continuous"] or cards

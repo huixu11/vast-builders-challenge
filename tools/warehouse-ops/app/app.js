@@ -15,8 +15,15 @@
       kpi_idle: "Idle labor", kpi_idle_sub: "{m} idle person-minutes in the window",
       kpi_machines: "Machines moving now", kpi_machines_sub: "{p} of machine-time moving",
       kpi_alerts: "Open safety alerts", kpi_flags: "Operational flags", kpi_flags_sub: "bottlenecks · surplus · congestion",
-      kpi_footage: "Camera views analysed", kpi_footage_sub: "{m} min of video · {n} segments",
+      kpi_footage: "Camera views analysed", kpi_footage_sub: "{v} videos · {m} min · {n} segments",
       cam_status: "Camera status", open_wall: "Open video wall", alert_feed: "Live alert feed",
+      nav_library: "Video library", lib_title: "All indexed videos", lib_link: "All {n} videos",
+      lib_hint: "Hover to preview · click to play", lib_videos: "videos", lib_cams: "camera views",
+      lib_segs_an: "segments analysed", lib_minutes: "minutes of footage", lib_with_alerts: "With alerts",
+      lib_all: "All", lib_segs: "{a}/{t} segments", lib_alert_one: "1 alert", lib_alerts: "{n} alerts", lib_site_sub: "{c} cameras · {v} videos",
+      lib_open_res: "Resources & bottlenecks", lib_open_replay: "Multi-camera replay", lib_ask: "Ask about this video",
+      lib_ask_q: "What happens on {cam} at {site} between {t0} and {t1}? Any safety or efficiency issues?",
+      lib_empty: "No videos match this filter.", close: "Close",
       top_flags: "Top operational flags", top_recs: "Recommended actions", view_all: "View all",
       people: "people", idle: "idle", machines: "machines", avg: "avg", moving: "moving",
       status_ok: "Normal", status_warn: "Watch", status_alert: "Alert", scenario: "scenario",
@@ -87,8 +94,15 @@
       kpi_idle: "空闲人力", kpi_idle_sub: "窗口内空闲 {m} 人·分钟",
       kpi_machines: "当前运行设备", kpi_machines_sub: "设备时间中 {p} 处于运行",
       kpi_alerts: "未处理安全告警", kpi_flags: "运营标记", kpi_flags_sub: "瓶颈 · 冗余 · 拥堵",
-      kpi_footage: "已分析摄像头视角", kpi_footage_sub: "{m} 分钟视频 · {n} 个片段",
+      kpi_footage: "已分析摄像头视角", kpi_footage_sub: "{v} 个视频 · {m} 分钟 · {n} 个片段",
       cam_status: "摄像头状态", open_wall: "打开视频墙", alert_feed: "实时告警流",
+      nav_library: "视频库", lib_title: "全部已索引视频", lib_link: "全部 {n} 个视频",
+      lib_hint: "悬停预览 · 点击播放", lib_videos: "个视频", lib_cams: "个机位",
+      lib_segs_an: "已分析片段", lib_minutes: "分钟视频", lib_with_alerts: "有告警",
+      lib_all: "全部", lib_segs: "{a}/{t} 片段", lib_alert_one: "1 个告警", lib_alerts: "{n} 个告警", lib_site_sub: "{c} 个机位 · {v} 个视频",
+      lib_open_res: "资源与瓶颈", lib_open_replay: "多机位回放", lib_ask: "就此视频提问",
+      lib_ask_q: "{site} 的 {cam} 在 {t0}–{t1} 之间发生了什么？有没有安全或效率问题？",
+      lib_empty: "没有符合筛选条件的视频。", close: "关闭",
       top_flags: "主要运营标记", top_recs: "建议措施", view_all: "查看全部",
       people: "人", idle: "空闲", machines: "设备", avg: "平均", moving: "移动",
       status_ok: "正常", status_warn: "关注", status_alert: "告警", scenario: "场景",
@@ -163,6 +177,7 @@
     replay: { site: null, t: 0, eye: false, boxes: false, rate: 1, focus: -1 },
     chat: [], asking: false,
     report: { site: "all", camera: "", cache: {}, current: null },
+    lib: null, libFilter: { site: "", alerts: false },
     segCache: {},
   };
 
@@ -799,6 +814,7 @@
     const scenarios = S.idx.sites.filter((s) => siteKind(s) === "scenario");
     const flags = (o.top_flags || []).slice(0, 5);
     const recs = (o.top_recommendations || []).slice(0, 3);
+    const nVideos = Object.keys(S.idx.chunkByVideo).length;
     const alertsKpi = `<div class="kpi accent-red"><div class="kpi-h">${ICON.alert}<span>${tr("kpi_alerts")}</span></div>
       <div class="kpi-v">${open.length}</div>
       <div class="sev-row">${["high", "medium", "low"].map((s) => `<span class="sev-tag sev-${s}">${sevLabel(s)} ${sevCount(s)}</span>`).join("")}</div></div>`;
@@ -809,11 +825,11 @@
         ${kpiCard(ICON.machine, tr("kpi_machines"), `${fmtNum(k.machines_active_now)}<small>/${fmtNum(k.machines_total_now)}</small>`, tr("kpi_machines_sub", { p: pct(k.machine_moving_ratio) }), "orange", k.machine_moving_ratio)}
         ${alertsKpi}
         ${kpiCard(ICON.flag, tr("kpi_flags"), String(k.flags ?? S.data.util.flags.length), tr("kpi_flags_sub"), "violet")}
-        ${kpiCard(ICON.camera, tr("kpi_footage"), String(k.cameras ?? 0), tr("kpi_footage_sub", { m: fmtNum(k.video_minutes), n: k.segments ?? 0 }), "blue")}
+        ${kpiCard(ICON.camera, tr("kpi_footage"), String(k.cameras ?? 0), tr("kpi_footage_sub", { v: nVideos, m: fmtNum(k.video_minutes), n: k.segments ?? 0 }), "blue")}
       </section>
       <section class="ov-grid">
         <div class="card">
-          <div class="card-h"><h2>${ICON.camera}${tr("cam_status")}</h2><a class="link" href="#replay">${tr("open_wall")} →</a></div>
+          <div class="card-h"><h2>${ICON.camera}${tr("cam_status")}</h2><span class="card-links"><a class="link" href="#library">${tr("lib_link", { n: nVideos })} →</a><a class="link" href="#replay">${tr("open_wall")} →</a></span></div>
           <div class="cam-grid">${floorCams.map(camCard).join("")}${scenarios.map(scenarioCard).join("")}</div>
         </div>
         <div class="ov-side">
@@ -1562,8 +1578,152 @@
     if (status) status.innerHTML = badges;
   }
 
+  // ===================================================================== video library
+  function thumbStyle(i, th) {
+    if (i == null || !th) return "";
+    const col = i % th.cols, row = Math.floor(i / th.cols);
+    const x = th.cols > 1 ? (col / (th.cols - 1)) * 100 : 0, y = th.rows > 1 ? (row / (th.rows - 1)) * 100 : 0;
+    return `background-image:url('api/thumbs.jpg?v=${enc(S.lib.version || "")}');background-size:${th.cols * 100}% ${th.rows * 100}%;background-position:${x.toFixed(3)}% ${y.toFixed(3)}%`;
+  }
+
+  function libCard(it, th) {
+    const st = it.max_severity === "high" ? "alert" : it.max_severity || it.flag_ids.length ? "warn" : "ok";
+    const n = it.event_ids.length;
+    return `<button type="button" class="cam-card lib-card st-${st}" data-video="${esc(it.original_video)}">
+      <div class="thumb-wrap"><div class="lib-thumb" style="${thumbStyle(it.thumb, th)}"></div>
+        <span class="cam-tag">${ICON.camera}${esc(it.camera)}${it.view ? ` · ${esc(viewLabel(it.view))}` : ""}</span>
+        ${n ? `<span class="st-pill"><i></i>${tr(n === 1 ? "lib_alert_one" : "lib_alerts", { n })}</span>` : ""}
+        <span class="lib-time mono">${fmtT(it.scene_t0)}–${fmtT(it.scene_t1)}</span>
+        <span class="lib-play">${ICON.play}</span>
+      </div>
+      <div class="cam-body">
+        <div class="cam-stats">
+          <div><b>${it.people_avg ?? "—"}</b><span>${tr("people")} · ${tr("avg")}</span></div>
+          <div><b class="${num(it.idle_ratio) >= 0.5 ? "amber" : ""}">${it.idle_ratio == null ? "—" : pct(it.idle_ratio)}</b><span>${tr("idle")}</span></div>
+          <div><b>${it.machines_avg ?? "—"}</b><span>${tr("machines")} · ${tr("avg")}</span></div>
+        </div>
+        <div class="lib-foot"><span class="tag">${tr("lib_segs", { a: it.segments_analyzed, t: it.segments_total })}</span>${it.flag_ids.length ? `<span class="tag">${ICON.flag}${it.flag_ids.length}</span>` : ""}</div>
+      </div></button>`;
+  }
+
+  function closeVideoModal() {
+    const host = $("#videoModal");
+    if (!host) return;
+    host.querySelectorAll("video").forEach(stopVideo);
+    host.remove();
+    document.removeEventListener("keydown", modalKey);
+  }
+  function modalKey(e) { if (e.key === "Escape") closeVideoModal(); }
+
+  function openVideoModal(it) {
+    closeVideoModal();
+    const q = tr("lib_ask_q", { cam: it.camera, site: it.site_id, t0: fmtT(it.scene_t0), t1: fmtT(it.scene_t1) });
+    const refs = [...it.event_ids, ...it.flag_ids].map(refChip).join("");
+    const host = document.createElement("div");
+    host.id = "videoModal";
+    host.className = "modal-back";
+    host.innerHTML = `<div class="modal card" role="dialog" aria-modal="true">
+      <div class="card-h"><h2>${ICON.camera}${esc(it.site_id)} · ${esc(it.camera)} <span class="muted small">${esc(viewLabel(it.view))} · ${fmtT(it.scene_t0)}–${fmtT(it.scene_t1)}</span></h2>
+        <button type="button" class="btn sm ghost" data-close>${tr("close")} ✕</button></div>
+      <video class="modal-video" controls autoplay playsinline src="${clipUrl(it.original_video)}"></video>
+      <div class="cam-stats modal-stats">
+        <div><b>${it.people_avg ?? "—"}</b><span>${tr("people")} · ${tr("avg")}</span></div>
+        <div><b>${it.idle_ratio == null ? "—" : pct(it.idle_ratio)}</b><span>${tr("idle")}</span></div>
+        <div><b>${it.machines_avg ?? "—"}</b><span>${tr("machines")} · ${tr("avg")}</span></div>
+      </div>
+      ${it.caption ? `<p class="modal-caption">${esc(it.caption)}</p>` : ""}
+      ${refs ? `<div class="chips">${refs}</div>` : ""}
+      <div class="modal-actions">
+        <a class="btn" href="#resources/${enc(it.site_id)}/${enc(it.camera)}">${ICON.users}${tr("lib_open_res")}</a>
+        <a class="btn" href="#replay/${enc(it.site_id)}@${Math.round(it.scene_t0)}">${ICON.grid}${tr("lib_open_replay")}</a>
+        <a class="btn primary" href="#ask/${enc(q)}">${ICON.spark}${tr("lib_ask")}</a>
+      </div></div>`;
+    host.addEventListener("click", (e) => {
+      if (e.target === host || e.target.closest("[data-close]")) closeVideoModal();
+    });
+    document.body.appendChild(host);
+    document.addEventListener("keydown", modalKey);
+  }
+
+  function renderLibrary(el) {
+    const draw = () => {
+      const lib = S.lib, F = S.libFilter, sm = lib.summary || {}, th = lib.thumbs;
+      const items = lib.items.filter((i) => (!F.site || i.site_id === F.site) && (!F.alerts || i.event_ids.length));
+      const siteIds = [...new Set(lib.items.map((i) => i.site_id))];
+      const chip = (label, n, on, attrs) => `<button type="button" class="chip${on ? " on" : ""}" ${attrs}>${label} <small>${n}</small></button>`;
+      const groups = siteIds.map((sid) => {
+        const its = items.filter((i) => i.site_id === sid);
+        if (!its.length) return "";
+        return `<section class="card lib-site">
+          <div class="card-h"><h2>${ICON.camera}${esc(siteTitle(sid))} <span class="muted small mono">${esc(sid)}</span></h2>
+            <span class="muted small">${tr("lib_site_sub", { c: new Set(its.map((i) => i.camera)).size, v: its.length })}</span></div>
+          <div class="lib-grid">${its.map((i) => libCard(i, th)).join("")}</div></section>`;
+      }).join("");
+      el.innerHTML = `
+        <section class="card lib-head">
+          <div class="card-h"><h2>${ICON.grid}${tr("lib_title")}</h2><span class="muted small">${tr("lib_hint")}</span></div>
+          <div class="lib-stats">
+            <div><b>${sm.videos ?? 0}</b><span>${tr("lib_videos")}</span></div>
+            <div><b>${sm.cameras ?? 0}</b><span>${tr("lib_cams")}</span></div>
+            <div><b>${sm.segments_analyzed ?? 0}<small>/${sm.segments ?? 0}</small></b><span>${tr("lib_segs_an")}</span></div>
+            <div><b>${fmtNum(sm.minutes)}</b><span>${tr("lib_minutes")}</span></div>
+            <div><b>${sm.with_events ?? 0}</b><span>${tr("lib_with_alerts")}</span></div>
+          </div>
+          <div class="chips">
+            ${chip(tr("lib_all"), lib.items.length, !F.site && !F.alerts, 'data-site=""')}
+            ${siteIds.map((sid) => chip(esc(sid), lib.items.filter((i) => i.site_id === sid).length, F.site === sid, `data-site="${esc(sid)}"`)).join("")}
+            ${chip(`${ICON.alert}${tr("lib_with_alerts")}`, sm.with_events ?? 0, F.alerts, "data-alerts")}
+          </div>
+        </section>
+        ${groups || `<div class="card">${emptyState(ICON.camera, tr("lib_empty"))}</div>`}`;
+
+      el.querySelectorAll("[data-site]").forEach((b) => b.addEventListener("click", () => {
+        F.site = b.dataset.site;
+        if (!F.site) F.alerts = false;
+        draw();
+      }));
+      el.querySelector("[data-alerts]")?.addEventListener("click", () => { F.alerts = !F.alerts; draw(); });
+
+      const byVideo = Object.fromEntries(lib.items.map((i) => [i.original_video, i]));
+      let hoverTimer = 0;
+      el.querySelectorAll(".lib-card").forEach((card) => {
+        const wrap = card.querySelector(".thumb-wrap");
+        card.addEventListener("mouseenter", () => {
+          clearTimeout(hoverTimer);
+          hoverTimer = setTimeout(() => {
+            if (wrap.querySelector("video")) return;
+            const v = document.createElement("video");
+            Object.assign(v, { muted: true, loop: true, playsInline: true, autoplay: true, className: "thumb lib-preview" });
+            v.src = clipUrl(card.dataset.video);
+            wrap.insertBefore(v, wrap.children[1]);
+          }, 250);
+        });
+        card.addEventListener("mouseleave", () => {
+          clearTimeout(hoverTimer);
+          wrap.querySelectorAll("video").forEach((v) => { stopVideo(v); v.remove(); });
+        });
+        card.addEventListener("click", () => {
+          wrap.querySelectorAll("video").forEach((v) => { stopVideo(v); v.remove(); });
+          const it = byVideo[card.dataset.video];
+          if (it) openVideoModal(it);
+        });
+      });
+      onCleanup(() => clearTimeout(hoverTimer));
+    };
+
+    onCleanup(closeVideoModal);
+    if (S.lib && S.lib.version === S.version) { draw(); return; }
+    el.innerHTML = loadingHtml();
+    api("api/library").then((lib) => {
+      S.lib = lib;
+      if (S.view === "library") draw();
+    }).catch((e) => {
+      if (S.view === "library") el.innerHTML = `<div class="card">${emptyState(ICON.alert, e.message)}</div>`;
+    });
+  }
+
   // ===================================================================== router + boot
-  const VIEWS = { overview: renderOverview, alerts: renderAlerts, resources: renderResources, replay: renderReplay, ask: renderAsk, report: renderReport };
+  const VIEWS = { overview: renderOverview, library: renderLibrary, alerts: renderAlerts, resources: renderResources, replay: renderReplay, ask: renderAsk, report: renderReport };
 
   function route() {
     const parts = location.hash.replace(/^#/, "").split("/").map((p) => { try { return decodeURIComponent(p); } catch { return p; } });

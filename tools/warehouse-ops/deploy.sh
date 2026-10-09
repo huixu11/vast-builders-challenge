@@ -31,8 +31,8 @@ ENV_FILE="$(umask 077; mktemp)"
 GZ_DIR="$(mktemp -d)"
 trap 'rm -rf "$ENV_FILE" "$GZ_DIR"' EXIT
 
-# Kubernetes caps each ConfigMap at ~1 MiB: code goes in as-is, the analyzer's data_*.json gzipped
-# into a second ConfigMap that the pod unpacks at startup.
+# Kubernetes caps each ConfigMap at ~1 MiB: code goes in as-is, the analyzer's data_* files
+# (JSON plus the thumbnail sheet) gzipped into a second ConfigMap that the pod unpacks at startup.
 apply_configmap() {  # name, files...
   local name="$1"; shift
   local total; total=$(cat "$@" | wc -c)
@@ -48,7 +48,7 @@ mapfile -t CODE_FILES < <(find "$APP_DIR" -maxdepth 1 -type f ! -name 'data_*.js
   \( -name '*.py' -o -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.json' -o -name 'requirements.txt' \) | sort)
 apply_configmap "${APP_NAME}-code" "${CODE_FILES[@]}"
 
-mapfile -t DATA_FILES < <(find "$APP_DIR" -maxdepth 1 -type f -name 'data_*.json' | sort)
+mapfile -t DATA_FILES < <(find "$APP_DIR" -maxdepth 1 -type f \( -name 'data_*.json' -o -name 'data_*.jpg' \) | sort)
 if (( ${#DATA_FILES[@]} )); then
   for f in "${DATA_FILES[@]}"; do gzip -9c "$f" > "$GZ_DIR/$(basename "$f").gz"; done
   apply_configmap "${APP_NAME}-data" "$GZ_DIR"/*.gz

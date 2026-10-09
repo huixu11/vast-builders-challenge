@@ -125,6 +125,78 @@ Return ONLY a JSON object with this shape:
  "summary": str (one sentence)}}"""
 
 
+HUMAN_ACTIVITIES = ("walking", "working_stationary", "waiting")
+MACHINE_STATES = ("moving", "attended", "parked")
+
+
+def _where(region: str | None) -> str:
+    return f"Look only at the {region} part of the image." if region else "Look at the whole image."
+
+
+def labor_check_prompt(camera: str, view: str, region: str | None) -> str:
+    return f"""This is a 5-second clip from fixed camera "{camera}" ({VIEW_TEXT[view]}) {_W017_SCENE}.
+{_where(region)}
+
+List every human worker you can see. Do NOT include humanoid robots (bipedal machines). For each human give their main activity during the clip with exactly one label:
+- walking: moves from one place to another
+- working_stationary: stays in place but handles items, operates equipment, or works at a station, shelf or pallet
+- waiting: stands or sits without handling anything (waiting, talking, watching)
+Then count the humanoid robots separately.
+
+Return ONLY a JSON object:
+{{"humans": [{{"position": "left|center|right", "activity": "walking|working_stationary|waiting"}}], "humanoid_robots": int, "description": str (one sentence)}}"""
+
+
+def machine_check_prompt(camera: str, view: str) -> str:
+    return f"""This is a 5-second clip from fixed camera "{camera}" ({VIEW_TEXT[view]}) {_W017_SCENE}.
+Look at the whole image.
+
+List every machine you can see: forklifts or pallet stackers, AGVs, AMRs and humanoid robots. Count each physical machine once. For each give its state during the clip with exactly one label:
+- moving: drives or walks during the clip
+- attended: stopped while being loaded or unloaded, or while a person works with it
+- parked: stopped with nobody using it
+
+Return ONLY a JSON object:
+{{"machines": [{{"type": "forklift|agv|amr|humanoid", "state": "moving|attended|parked"}}], "description": str (one sentence)}}"""
+
+
+def crowd_check_prompt(camera: str, view: str, region: str) -> str:
+    return f"""This is a 5-second clip from fixed camera "{camera}" ({VIEW_TEXT[view]}) {_W017_SCENE}.
+{_where(region)}
+
+Count the humans in that part of the image (do NOT count humanoid robots). Then answer: is anyone's movement there blocked or slowed by people, machines or objects, and are people queuing or waiting for others to pass?
+
+Return ONLY a JSON object:
+{{"humans_in_region": int, "movement_obstructed": bool, "queueing": bool, "description": str (one sentence)}}"""
+
+
+def normalize_labor_check(js) -> dict:
+    if not isinstance(js, dict) or not isinstance(js.get("humans"), list):
+        raise ValueError("unexpected reply shape")
+    acts = [_label((h or {}).get("activity") if isinstance(h, dict) else h, HUMAN_ACTIVITIES) for h in js["humans"]]
+    counts = {a: sum(x == a for x in acts) for a in HUMAN_ACTIVITIES}
+    return {"humans": sum(counts.values()), **counts, "humanoid_robots": _int(js.get("humanoid_robots")),
+            "description": str(js.get("description") or "")[:240]}
+
+
+def normalize_machine_check(js) -> dict:
+    if not isinstance(js, dict) or not isinstance(js.get("machines"), list):
+        raise ValueError("unexpected reply shape")
+    items = [(_label(m.get("type"), MACHINE_TYPES), _label(m.get("state"), MACHINE_STATES))
+             for m in js["machines"] if isinstance(m, dict)]
+    items = [(t, s) for t, s in items if t and s]
+    return {"machines": len(items), **{s: sum(x == s for _, x in items) for s in MACHINE_STATES},
+            "by_type": {t: sum(x == t for x, _ in items) for t in MACHINE_TYPES},
+            "description": str(js.get("description") or "")[:240]}
+
+
+def normalize_crowd_check(js) -> dict:
+    if not isinstance(js, dict) or "humans_in_region" not in js:
+        raise ValueError("unexpected reply shape")
+    return {"humans_in_region": _int(js.get("humans_in_region")), "obstructed": _bool(js.get("movement_obstructed")),
+            "queueing": _bool(js.get("queueing")), "description": str(js.get("description") or "")[:240]}
+
+
 def recommendations_prompt(cards: list[dict], counts: dict, cameras: list[dict]) -> str:
     shown = [{k: c[k] for k in ("card_id", "issue", "guidance", "facts")} for c in cards]
     return f"""You are the operations analyst for a robot-assisted warehouse. The video analytics system found the issues below during the last shift. Each issue card lists measured facts and the kind of action that addresses it.
