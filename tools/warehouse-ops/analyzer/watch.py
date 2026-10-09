@@ -3,8 +3,8 @@
 Every --interval seconds the agent lists the indexed chunks in the warehouse locations and compares them with
 what the app's data files cover. When a site gains a fully indexed chunk (all of its segments written), the
 agent runs the analyzer on that site, which merges the results into the data files; the app reloads them
-within ~10 s and badges the new alerts. Status and an activity log go to .cache/agent_status.json, which the
-app shows as the agent card.
+within ~10 s and badges the new alerts. The new results are also written to VastDB (export_vastdb.py) when the
+SDK is installed. Status and an activity log go to .cache/agent_status.json, which the app shows as the agent card.
 
 Run from the repo root: .venv\\Scripts\\python.exe tools/warehouse-ops/analyzer/watch.py [--interval 30] [--no-vlm]
 """
@@ -20,6 +20,12 @@ from datetime import datetime, timezone
 
 import inventory
 from common import ANALYZER_DIR, APP_DIR, cache_path, log, read_json, write_json
+
+try:
+    import export_vastdb
+except ImportError:  # vastdb SDK not installed: results stay in the app's data files only
+    export_vastdb = None
+VASTDB = export_vastdb is not None and export_vastdb.reachable()
 
 STATUS_PATH = cache_path("agent_status.json")
 RUN_LOG = cache_path("agent_last_run.log")
@@ -64,8 +70,9 @@ class Agent:
 
     def __init__(self, interval: int) -> None:
         old = read_json(STATUS_PATH, {}) or {}
+        history = [e for e in old.get("log", []) if e.get("kind") != "start"][:MAX_LOG]
         self.state = {"status": "starting", "interval_sec": interval, "started_at": now_iso(),
-                      "locations": list(inventory.LOCATIONS), "log": old.get("log", [])[:MAX_LOG], "analyzing": []}
+                      "locations": list(inventory.LOCATIONS), "log": history, "analyzing": []}
         self._lock = threading.Lock()
         self.save()
         threading.Thread(target=self._heartbeat, name="heartbeat", daemon=True).start()
@@ -127,6 +134,13 @@ def analyze(agent: Agent, ready: dict[str, dict], no_vlm: bool) -> None:
     for e in events:
         agent.note("alert", f"{e['severity'].upper()} {e['type'].replace('_', ' ')}: {e['title']} "
                             f"({e['site_id']} {e['camera']}, t={float(e.get('scene_t') or 0):.1f} s)", refs=[e["event_id"]])
+    if VASTDB:
+        try:
+            written = export_vastdb.export(set(sites))
+            agent.note("stored", f"Saved to VastDB ({export_vastdb.SCHEMA}): {written['alerts']} alert(s), "
+                                 f"{written['flags']} flag(s), {written['segment_metrics']} segment metric row(s)")
+        except Exception as e:  # noqa: BLE001
+            agent.note("error", f"VastDB write failed ({type(e).__name__}); results are still in the app")
     subprocess.run([sys.executable, os.path.join(ANALYZER_DIR, "thumbnails.py")], capture_output=True, check=False)
     agent.save(status="watching", analyzing=[])
 
