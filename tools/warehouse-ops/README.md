@@ -7,7 +7,8 @@ It watches every camera in the archive, catches near misses between people and m
 machines, estimates what that idle time costs per shift, and answers questions with citations. Every alert and every
 number links back to the video moment it came from.
 
-**Demo video:** _link added at submission_
+**Demo video:** _link added at submission_ (recorded by `demo/record_demo.py`: Playwright drives the app in Edge
+with its caption track, `?tour`)
 
 ## What it does
 
