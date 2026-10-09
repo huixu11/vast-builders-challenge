@@ -174,7 +174,8 @@ class Cosmos:
     """OpenAI-compatible chat client for Cosmos3-Reason (video or text)."""
 
     def __init__(self) -> None:
-        self.base = setting("COSMOS3_REASON_URL", default=f"http://{_GPU_HOST_DEFAULT}:8001").rstrip("/")
+        gpu_host = setting("GPU_HOST", default=_GPU_HOST_DEFAULT)
+        self.base = setting("COSMOS3_REASON_URL", default=f"http://{gpu_host}:8001").rstrip("/")
         self._bearer = setting("GPU_BEARER_TOKEN")
         self._model: str | None = os.environ.get("COSMOS3_REASON_MODEL") or None
         self.session = requests.Session()
