@@ -95,7 +95,7 @@
       basis_title: "Why it is flagged",
       basis_views: "View agreement: {c}/{ct} ceiling views and {e}/{et} eye-level views call it a {type}.",
       basis_kin: "Motion tracks (YOLO): the worker stands still until {onset}, then {n}/{ct} ceiling views show a sudden escape (peak ≈ {p} m/s){hidden}.",
-      basis_hidden: "; the worker is hidden behind an object in {n} views",
+      basis_hidden: "; the worker is hidden behind an object in {n} of the views",
       basis_sep: "Closest distance (VLM estimate): {s}, at about {t}{spread}.",
       basis_spread: " (views differ by {s} s)",
       basis_vlm: "Model description (Cosmos3-Reason, original text)",
