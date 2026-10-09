@@ -1891,3 +1891,50 @@
 
   boot();
 })();
+
+// Caption track for silent demo recordings: open the app with ?tour, press → or PageDown to advance, ← or PageUp to
+// go back, H to hide. Steps switch the view themselves, so the captions always match the screen.
+(() => {
+  if (!new URLSearchParams(location.search).has("tour")) return;
+  // [view, headline, one short line, full-screen title card]
+  const STEPS = [
+    ["", "Warehouse Ops Copilot", "A real-time video agent for warehouse safety and operations", true],
+    ["#overview", "AI watches every camera", "Near misses · idle labor · idle machines · what it costs"],
+    ["#overview", "Idle time ≈ $859 per shift", "≈ $215k a year at editable assumptions"],
+    ["#library", "60 videos · 33 cameras", "The VSS archive on VAST, every 5-second segment analyzed"],
+    ["#alerts", "3 near misses caught", "Worker within 1 m of a pallet stacker"],
+    ["#alerts/ev_w3_run3_near_miss_00024", "Verified, not guessed", "Motion proposes · Cosmos Reason verifies · cameras vote · 0/12 false alarms"],
+    ["#resources", "Idle labor & idle machines", "10 flags · 5 recommendations, each with its evidence"],
+    ["#replay/w3_run3@0", "Every camera angle in sync", "Multi-camera replay of the near miss"],
+    ["#ask", "Ask in plain English", "NVIDIA Nemotron-3-Ultra on W&B Inference · answers cite alerts and clips"],
+    ["#report", "Shift report in one click", "Every number checked against the data"],
+    ["#overview", "Real-time agent", "Polls VSS every 30 s · analyzes new footage automatically"],
+    ["", "Saved back to VastDB", "Alerts join the VSS segment index on the segment's S3 key"],
+    ["", "Built on NVIDIA · VAST · CoreWeave · W&B", "github.com/huixu11/warehouse-ops-copilot", true],
+  ];
+  const bar = document.createElement("div");
+  bar.className = "tour-bar";
+  bar.innerHTML = '<div class="tour-title"></div><div class="tour-sub"></div>';
+  document.body.append(bar);
+  document.body.classList.add("touring");
+  let step = 0;
+  const show = (n) => {
+    step = Math.max(0, Math.min(STEPS.length - 1, n));
+    const [hash, title, sub, card] = STEPS[step];
+    if (hash && location.hash !== hash) location.hash = hash;
+    bar.classList.toggle("card", !!card);
+    bar.querySelector(".tour-title").textContent = title;
+    bar.querySelector(".tour-sub").textContent = sub;
+  };
+  window.tourGo = show;
+  bar.onclick = () => show(step + 1);
+  document.addEventListener("keydown", (ev) => {
+    if (ev.target instanceof Element && ev.target.closest("input, textarea, select, [contenteditable]")) return;
+    if (ev.key === "ArrowRight" || ev.key === "PageDown") show(step + 1);
+    else if (ev.key === "ArrowLeft" || ev.key === "PageUp") show(step - 1);
+    else if (ev.key === "h" || ev.key === "H") bar.hidden = !bar.hidden;
+    else return;
+    ev.preventDefault();
+  });
+  show(0);
+})();
