@@ -256,6 +256,12 @@ select:focus, input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgb
 .task-spark { display: flex; flex-direction: column; gap: 2px; }
 .task-foot { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 4px; font-size: 12px; }
 .r-tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+.basis { margin: 4px 0 10px; padding-left: 18px; display: grid; gap: 6px; line-height: 1.55; }
+.basis-quote { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg2); }
+.basis-quote .k { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); font-size: 11px; }
+.basis-quote .k svg { width: 13px; height: 13px; }
+.basis-quote blockquote { margin: 6px 0 0; color: var(--muted); font-style: italic; line-height: 1.5; }
+.pill.batch { color: var(--muted); }
 .r-tag svg { width: 12px; height: 12px; margin-right: 4px; flex: none; }
 .r-tag.red { color: var(--red); background: rgba(244, 63, 94, .12); border: 1px solid rgba(244, 63, 94, .35); }
 .r-tag.amber { color: var(--amber); background: rgba(251, 191, 36, .1); border: 1px solid rgba(251, 191, 36, .35); }
@@ -422,12 +428,10 @@ canvas.overlay { position: absolute; left: 0; top: 0; pointer-events: none; }
 .res-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; margin: 4px 2px 12px; }
 .res-title h1 { font-size: 19px; }
 .res-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 14px; align-items: start; }
-.res-people { grid-column: 1; grid-row: 1; }
+.res-mach { grid-column: 1; grid-row: 1; }
 .res-heat { grid-column: 2; grid-row: 1 / span 2; }
-.res-mach { grid-column: 1; grid-row: 2; }
-.res-bars { grid-column: 1; grid-row: 3; }
-.res-flags { grid-column: 2; grid-row: 3 / span 2; }
-.res-recs { grid-column: 1; grid-row: 4; }
+.res-bars { grid-column: 1; grid-row: 2; }
+.res-flags { grid-column: 1 / span 2; grid-row: 3; }
 .legend { display: flex; gap: 12px; color: var(--muted); font-size: 11.5px; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .legend span::before { content: ""; width: 12px; height: 3px; border-radius: 2px; background: var(--c); }

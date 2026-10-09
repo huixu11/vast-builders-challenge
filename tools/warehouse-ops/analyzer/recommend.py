@@ -154,6 +154,8 @@ def _feedback(report: dict) -> str:
         problems.append(f"expected_impact promised sizes of improvement ({'; '.join(report['promised_improvements'])})")
     if report["recs_kept"] < 2:
         problems.append("fewer than 2 recommendations had valid refs")
+    if report.get("labor_wording"):
+        problems.append("it made claims about labor or idle workers, which the data does not measure")
     return "; ".join(problems) or "the summary was too short"
 
 
@@ -170,6 +172,8 @@ def build(util: dict, events: list[dict], vlm, generated_at: str) -> dict:
             if rec is None:
                 break
             ok, recs, report = check(rec["json"], payload, known, allowed, high)
+            report["labor_wording"] = has_labor_wording(recs, rec["json"]["summary"])
+            ok = ok and not report["labor_wording"]
             attempts.append(report)
             if ok:
                 return {"generated_at": generated_at, "model": rec["model"], "recommendations": recs,
@@ -197,10 +201,10 @@ def shift_report(payload: dict, recs: list[dict], summary: str) -> str:
         return "-" if v is None else f"{v * 100:.0f}%"
 
     lines += ["", "## Fleet efficiency",
-              "| Camera | Machines moving | AGV moving | AGV loaded | AMR moving | Humanoid moving | Windows with motion |",
-              "|---|---|---|---|---|---|---|"]
+              "| Camera | Machines moving | AGV moving | AMR moving | Humanoid moving | Windows with motion |",
+              "|---|---|---|---|---|---|"]
     lines += [f"| {c['site_id']} {c['camera']} | {c['machine_moving_ratio'] * 100:.0f}% | {share(c, 'agv', 'moving_ratio')} | "
-              f"{share(c, 'agv', 'loaded_ratio')} | {share(c, 'amr', 'moving_ratio')} | "
+              f"{share(c, 'amr', 'moving_ratio')} | "
               f"{share(c, 'humanoid', 'moving_ratio')} | {c['fleet']['active_window_share'] * 100:.0f}% |"
               for c in payload["cameras"]]
     lines += [""] + [f"- {f['message']}" for f in payload["flags"]]
@@ -209,6 +213,45 @@ def shift_report(payload: dict, recs: list[dict], summary: str) -> str:
 
 
 # --------------------------------------------------------------------------------------------- template
+ZH = {
+    "Enforce a stop-and-yield zone around moving pallet stackers": {
+        "title_zh": "在行驶中的堆高车周围设置停车让行区",
+        "action_zh": "为堆高车开启接近减速/停车，标出人行通道，工人进入禁行区时堆高车必须停下。",
+        "impact_zh": "消除这几次场景中出现的近距离逼近。"},
+    "Coach workers not to cross in front of moving vehicles": {
+        "title_zh": "提醒工人不要在行驶车辆前横穿",
+        "action_zh": "班前讲解路权规则，并在交叉点加地面标线。",
+        "impact_zh": "减少工人走进车辆行驶路径。"},
+    "Separate robot routes from walking areas on the main floor": {
+        "title_zh": "在主作业区把机器人路线和人行区分开",
+        "action_zh": "划出 AGV/机器人专用通道，站立作业不要占用通道。",
+        "impact_zh": "降低共享区域里与移动机器人的接触。"},
+    "Right-size the active robot fleet": {
+        "title_zh": "调整在场机器人数量",
+        "action_zh": "标记时段里一直静止的机器人，停回停车位或调去别处。",
+        "impact_zh": "减少静止设备占用地面空间。"},
+    "Relieve crowding hot spots": {
+        "title_zh": "缓解拥堵热点",
+        "action_zh": "把站立作业移出被标记的格子，让它保持为通行区域。",
+        "impact_zh": "人和机器人的通行路线更通畅。"},
+    "Unblock slow-moving traffic": {
+        "title_zh": "疏通缓慢通行",
+        "action_zh": "加宽或改道经过被标记格子的路线。",
+        "impact_zh": "通过该区域更快。"},
+    "Use the rarely occupied zone": {
+        "title_zh": "利用很少有人的区域",
+        "action_zh": "把很少有人的格子用作暂存或缓冲区。",
+        "impact_zh": "更好地利用现有地面面积。"},
+}
+LABOR_RE = re.compile(r"\b(labou?r|idle (?:workers?|staff|people)|staffing|reassign(?:ing)? (?:workers?|staff))\b", re.I)
+
+
+def has_labor_wording(recs: list[dict], summary: str) -> bool:
+    """The analyzer measures machines and occupancy, not worker activity, so labor/idle-worker claims are ungrounded."""
+    text = " ".join([summary] + [str(r.get(k, "")) for r in recs for k in ("title", "action", "rationale", "expected_impact")])
+    return bool(LABOR_RE.search(text))
+
+
 def _flags(payload: dict, ftype: str) -> list[dict]:
     return sorted((f for f in payload["flags"] if f["type"] == ftype),
                   key=lambda f: -abs(f["metric"]["value"] - f["metric"]["threshold"]))
@@ -221,7 +264,7 @@ def template(payload: dict) -> tuple[list[dict], str]:
 
     def add(title: str, action: str, rationale: str, impact: str, refs: list[str]) -> None:
         recs.append({"rec_id": f"rec_{len(recs) + 1:02d}", "title": title, "action": action, "rationale": rationale,
-                     "expected_impact": impact, "refs": refs})
+                     "expected_impact": impact, "refs": refs, **ZH.get(title, {})})
 
     close = [e for e in events if e["type"] in ("collision", "near_miss") and e["site_id"].startswith("w3_")]
     if close:
@@ -248,12 +291,12 @@ def template(payload: dict) -> tuple[list[dict], str]:
             "Lower exposure to moving robots on the shared floor.", [e["event_id"] for e in floor])
     for ftype, title, action, impact in (
         ("machine_surplus", "Right-size the active robot fleet", "Park or redeploy robots that stay stationary in "
-         "the flagged windows.", "Fewer idle machines occupying floor space."),
+         "the flagged windows.", "Fewer stationary machines occupying floor space."),
         ("congestion", "Relieve crowding hot spots", "Move standing work away from the flagged zone and keep it as "
          "a transit area.", "Clearer routes for people and robots."),
         ("bottleneck", "Unblock slow-moving traffic", "Widen or re-route the path through the flagged zone.",
          "Faster movement through the zone."),
-        ("underused_zone", "Use idle floor space", "Use the rarely occupied zone for staging or buffer storage.",
+        ("underused_zone", "Use the rarely occupied zone", "Use the rarely occupied zone for staging or buffer storage.",
          "Better use of available floor area."),
     ):
         flags = _flags(payload, ftype)
@@ -262,5 +305,5 @@ def template(payload: dict) -> tuple[list[dict], str]:
 
     sev = payload["counts"]["events_by_severity"]
     summary = (f"{len(events)} safety events ({sev['high']} high, {sev['medium']} medium, {sev['low']} low severity) "
-               f"and {len(payload['flags'])} utilization flags across {len(payload['cameras'])} floor cameras.")
+               f"and {len(payload['flags'])} efficiency flags across {len(payload['cameras'])} robot-floor cameras.")
     return recs, summary

@@ -1,8 +1,8 @@
 """Recompute derived fields in existing app data files without YOLO or Cosmos calls.
 
 Adds per-camera fleet metrics and AGV series fields (from data_segments.json), worker reaction metrics on
-safety events (from stored evidence), drops labor_surplus flags and the recommendation refs to them, and
-re-renders the shift report around the existing summary.
+safety events (from stored evidence), drops labor_surplus flags and the recommendation refs to them, replaces
+recommendations that make labor/idle-worker claims with the deterministic template, and re-renders the shift report.
 
 Usage: python tools/warehouse-ops/analyzer/refresh_data.py [app_dir]
 """
@@ -55,15 +55,21 @@ def main() -> int:
     for i, r in enumerate(kept, 1):
         r["rec_id"] = f"rec_{i:02d}"
     recs["recommendations"] = kept
+    payload = recommend.compact_payload(util, events)
     m = re.search(r"## Summary\n(.*?)\n\n## ", recs.get("shift_report_md") or "", re.S)
-    summary = m.group(1).strip() if m else recommend.template(recommend.compact_payload(util, events))[1]
-    recs["shift_report_md"] = recommend.shift_report(recommend.compact_payload(util, events), kept, summary)
+    summary = m.group(1).strip() if m else recommend.template(payload)[1]
+    replaced = recommend.has_labor_wording(kept, summary)
+    if replaced:
+        kept, summary = recommend.template(payload)
+        recs.update(model="template", recommendations=kept,
+                    validation={**(recs.get("validation") or {}), "source": "template", "replaced": "labor wording"})
+    recs["shift_report_md"] = recommend.shift_report(payload, kept, summary)
 
     for k, obj in (("utilization", util), ("events", events), ("recommendations", recs)):
         write_json(path[k], obj)
     log(f"refreshed {app_dir}: fleet on {len(util['cameras'])} cameras, "
         f"reaction on {sum(1 for e in events if e.get('reaction'))} events, dropped {len(dropped)} labor flags, "
-        f"{len(kept)} recommendations kept")
+        f"{len(kept)} recommendations kept" + (" (replaced by the template: labor wording)" if replaced else ""))
     errors = validate_outputs.validate(app_dir)
     if errors:
         log(f"CONTRACT VALIDATION FAILED ({len(errors)}): " + "; ".join(errors[:10]))

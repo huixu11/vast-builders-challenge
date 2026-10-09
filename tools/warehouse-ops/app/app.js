@@ -15,17 +15,16 @@
       sec_safety: "Safety", sec_safety_sub: "Forklift–worker close calls · multi-view VLM verdict + motion tracking",
       sec_eff: "Efficiency", sec_eff_sub: "Robot fleet on the w017 floor · AGV / AMR / humanoid utilization",
       kpi_reaction: "Forced escapes", kpi_reaction_sub: "runs where the worker had to run clear · peak {p} m/s · {s} with margin under 1 s",
-      kpi_fleet: "Fleet moving", kpi_fleet_sub: "share of machine-time in motion · {n} floor cameras",
-      kpi_agv_loaded: "AGVs carrying load", kpi_agv_loaded_sub: "AGV moving {p} · {n} AGVs in view on average",
+      kpi_fleet: "Fleet moving", kpi_fleet_sub: "share of machine-time in motion · w017, {n} cameras",
       r_margin: "Reaction margin", r_margin_sub: "started moving before closest approach",
       r_margin_unc: "margin uncertain · VLM views differ by {s} s",
       r_peak: "Escape speed", r_onset: "Worker starts moving (scene time)", r_none: "No reaction data", r_sep: "closest {s}",
       v_contact: "Contact", v_forced_evasion: "Forced to run", v_short_margin: "Margin too short", v_close_pass: "Close pass (≤ 2 m)",
       agv_moving: "AGV moving", agv_loaded: "AGV loaded", stationary: "Standing still", amr_moving: "AMR moving",
       humanoid_moving: "Humanoid moving", lane_activity: "Lane active", lane_activity_sub: "windows with a moving machine",
-      machines_moving_spark: "machines moving over time", per_avg: "avg", views_n: "{n} views",
+      machines_moving_spark: "orange = machines moving · grey = machines in view", per_avg: "avg", views_n: "{n} views",
       open_detail: "Review alert", open_resources: "Fleet details",
-      kpi_alerts: "Open safety alerts", kpi_flags: "Operational flags", kpi_flags_sub: "bottlenecks · surplus · congestion",
+      kpi_alerts: "Safety alerts", kpi_flags: "Operational flags", kpi_flags_sub: "bottlenecks · surplus · congestion",
       kpi_footage: "Camera views analysed", kpi_footage_sub: "{m} min of video · {n} segments",
       cam_status: "Camera status", open_wall: "Open video wall", alert_feed: "Live alert feed",
       top_flags: "Top operational flags", top_recs: "Recommended actions", view_all: "View all",
@@ -34,8 +33,8 @@
       scenario_views: "{n} synchronized views", no_alerts_site: "No alerts", new: "NEW",
       sev_high: "High", sev_medium: "Medium", sev_low: "Low",
       type_collision: "Collision", type_near_miss: "Near-miss", type_person_in_path: "Person in path",
-      type_robot_proximity: "Robot proximity", type_fall: "Fall", type_blocked_aisle: "Blocked aisle",
-      ftype_labor_surplus: "Labor surplus", ftype_machine_surplus: "Idle machines", ftype_congestion: "Congestion",
+      type_robot_proximity: "Robot proximity", type_none: "No hazard", type_fall: "Fall", type_blocked_aisle: "Blocked aisle",
+      ftype_labor_surplus: "Labor surplus", ftype_machine_surplus: "Under-used machines", ftype_congestion: "Congestion",
       ftype_underused_zone: "Underused zone", ftype_bottleneck: "Bottleneck",
       view_floor: "floor", view_lane: "lane", view_ceiling: "ceiling", view_eye: "eye-level",
       all_types: "All types", all_sites: "All sites", show_acked: "Show acknowledged",
@@ -52,11 +51,11 @@
       open_replay: "Multi-camera replay", ask_about: "Ask Copilot about this",
       ask_about_q: "What happened in {id} and what should we change to prevent it?",
       clip_error: "Clip unavailable right now", primary: "primary",
-      site: "Site", camera: "Camera", people_time: "People over time", machines_time: "Machines over time",
+      site: "Site", camera: "Camera", people_time: "People over time", machines_time: "Machines over time (per 5 s)",
       s_people: "people", s_moving: "walking", s_m_total: "machines in view", s_m_moving: "machines moving",
       s_agv_moving: "AGVs moving", s_agv_loaded: "AGVs loaded",
       agv_by_cam: "AGV moving share by camera", util_by_cam: "Machine utilization by camera",
-      heatmap: "Zone heatmap", occupancy: "Occupancy", window_avg: "window average",
+      heatmap: "People heatmap", occupancy: "Occupancy", window_avg: "window average",
       flags: "Operational flags", recs: "Recommendations", rationale: "Why", impact: "Expected impact",
       threshold: "threshold", no_flags: "No operational flags for this site.", no_recs: "No recommendations yet.",
       no_util: "No utilization data yet — the analyzer is still running.",
@@ -87,6 +86,27 @@
       engine_llm_r: "AI narrative + computed tables",
       engine_cosmos_r: "AI narrative + computed tables", copied: "Copied to clipboard", cached: "cached",
       report_fail: "AI narrative unavailable — showing the metrics-only report.",
+      batch: "Batch analysis · data from {t}", batch_mock: "Mock data · {t}",
+      batch_tip: "Recorded clips analysed offline by the analyzer (YOLO + Cosmos3-Reason); not a live stream.",
+      kpi_agv: "AGV moving", kpi_agv_sub: "share of AGV-time in motion · {n} AGVs in view on average",
+      machines_moving_ratio: "Machines moving",
+      site_w017: "Warehouse 017 · robot floor", site_run: "Forklift safety scenario · run {n}",
+      sep_contact: "contact", "sep_<1m": "under 1 m", "sep_1-2m": "1–2 m", "sep_2-4m": "2–4 m", "sep_>4m": "over 4 m",
+      basis_title: "Why it is flagged",
+      basis_views: "View agreement: {c}/{ct} ceiling views and {e}/{et} eye-level views call it a {type}.",
+      basis_kin: "Motion tracks (YOLO): the worker stands still until {onset}, then {n}/{ct} ceiling views show a sudden escape (peak ≈ {p} m/s){hidden}.",
+      basis_hidden: "; the worker is hidden behind an object in {n} views",
+      basis_sep: "Closest distance (VLM estimate): {s}, at about {t}{spread}.",
+      basis_spread: " (views differ by {s} s)",
+      basis_vlm: "Model description (Cosmos3-Reason, original text)",
+      heat_sub: "average people per zone · YOLO \"person\", includes humanoid robots",
+      heat_legend: "red box = congestion (≥ 4 at once) · blue box = rarely used (< 0.2 on average)",
+      whole_avg: "5-minute average", per_zone: "people per zone",
+      mach_hint: "Orange bands = under-used machine windows (under 40% of machines moving over 60 s) · click the chart to inspect a 5 s window",
+      agv_line: "line = 40% watch level",
+      row_far: "far row", row_mid: "middle row", row_near: "near row", zone: "{row}, column {col}",
+      report_note: "Tables are computed directly from the analyzer data. The optional AI narrative is checked number by number.",
+      gen_ai_opt: "Add AI narrative",
     },
     zh: {
       tagline: "基于视频的安全与效率洞察 · NVIDIA VSS on VAST",
@@ -99,17 +119,16 @@
       sec_safety: "安全", sec_safety_sub: "叉车与工人险情 · 多视角 VLM 判定 + 运动轨迹",
       sec_eff: "效率", sec_eff_sub: "w017 仓库机器人车队 · AGV / AMR / 人形机器人利用率",
       kpi_reaction: "被迫奔跑躲避", kpi_reaction_sub: "工人不得不跑开的场次 · 最高逃离速度 {p} m/s · {s} 次余量不足 1 秒",
-      kpi_fleet: "车队运行占比", kpi_fleet_sub: "设备时间中处于运行的比例 · {n} 个地面摄像头",
-      kpi_agv_loaded: "AGV 载货占比", kpi_agv_loaded_sub: "AGV 运行 {p} · 平均 {n} 台 AGV 在画面内",
+      kpi_fleet: "车队运行占比", kpi_fleet_sub: "设备时间中处于运行的比例 · w017 共 {n} 个摄像头",
       r_margin: "反应余量", r_margin_sub: "最接近前开始躲避",
       r_margin_unc: "余量不确定 · VLM 各视角相差 {s} 秒",
       r_peak: "逃离速度", r_onset: "工人开始移动（场景时间）", r_none: "无反应数据", r_sep: "最近距离 {s}",
       v_contact: "发生接触", v_forced_evasion: "被迫奔跑躲避", v_short_margin: "反应余量不足", v_close_pass: "近距离擦过（≤2 米）",
       agv_moving: "AGV 运行", agv_loaded: "AGV 载货", stationary: "静止设备", amr_moving: "AMR 运行",
       humanoid_moving: "人形机器人运行", lane_activity: "通道活跃", lane_activity_sub: "有设备在动的时间窗口",
-      machines_moving_spark: "运行设备随时间变化", per_avg: "平均", views_n: "{n} 个视角",
+      machines_moving_spark: "橙线 = 运行设备数 · 灰线 = 画面内设备数", per_avg: "平均", views_n: "{n} 个视角",
       open_detail: "查看告警", open_resources: "车队详情",
-      kpi_alerts: "未处理安全告警", kpi_flags: "运营标记", kpi_flags_sub: "瓶颈 · 冗余 · 拥堵",
+      kpi_alerts: "安全告警", kpi_flags: "运营标记", kpi_flags_sub: "瓶颈 · 冗余 · 拥堵",
       kpi_footage: "已分析摄像头视角", kpi_footage_sub: "{m} 分钟视频 · {n} 个片段",
       cam_status: "摄像头状态", open_wall: "打开视频墙", alert_feed: "实时告警流",
       top_flags: "主要运营标记", top_recs: "建议措施", view_all: "查看全部",
@@ -118,8 +137,8 @@
       scenario_views: "{n} 个同步视角", no_alerts_site: "无告警", new: "新",
       sev_high: "高", sev_medium: "中", sev_low: "低",
       type_collision: "碰撞", type_near_miss: "险情（未遂）", type_person_in_path: "人员闯入行驶路径",
-      type_robot_proximity: "机器人近距离", type_fall: "跌倒", type_blocked_aisle: "通道堵塞",
-      ftype_labor_surplus: "人力冗余", ftype_machine_surplus: "设备闲置", ftype_congestion: "拥堵",
+      type_robot_proximity: "机器人近距离", type_none: "无危险", type_fall: "跌倒", type_blocked_aisle: "通道堵塞",
+      ftype_labor_surplus: "人力冗余", ftype_machine_surplus: "设备低利用", ftype_congestion: "拥堵",
       ftype_underused_zone: "区域利用不足", ftype_bottleneck: "瓶颈",
       view_floor: "地面", view_lane: "通道", view_ceiling: "顶视", view_eye: "平视",
       all_types: "全部类型", all_sites: "全部站点", show_acked: "显示已确认",
@@ -136,11 +155,11 @@
       open_replay: "多机位回放", ask_about: "向 Copilot 提问",
       ask_about_q: "{id} 发生了什么？我们应该如何改进以防止再次发生？",
       clip_error: "视频暂时不可用", primary: "主视角",
-      site: "站点", camera: "摄像头", people_time: "人数随时间变化", machines_time: "设备随时间变化",
+      site: "站点", camera: "摄像头", people_time: "人数随时间变化", machines_time: "设备数量随时间变化（每 5 秒）",
       s_people: "人数", s_moving: "走动", s_m_total: "画面内设备", s_m_moving: "运行设备",
       s_agv_moving: "运行 AGV", s_agv_loaded: "载货 AGV",
       agv_by_cam: "各摄像头 AGV 运行占比", util_by_cam: "各摄像头设备利用率",
-      heatmap: "区域热力图", occupancy: "占用", window_avg: "窗口平均",
+      heatmap: "区域人员热力图", occupancy: "占用", window_avg: "窗口平均",
       flags: "运营标记", recs: "建议", rationale: "原因", impact: "预期效果",
       threshold: "阈值", no_flags: "该站点无运营标记。", no_recs: "暂无建议。",
       no_util: "暂无利用率数据——分析器仍在运行。",
@@ -169,6 +188,30 @@
       engine_llm_r: "AI 叙述 + 计算表格",
       engine_cosmos_r: "AI 叙述 + 计算表格", copied: "已复制到剪贴板", cached: "已缓存",
       report_fail: "AI 叙述暂不可用——显示纯指标报告。",
+      batch: "批量分析 · 数据生成于 {t}", batch_mock: "模拟数据 · {t}",
+      batch_tip: "录制好的视频由分析器离线处理（YOLO + Cosmos3-Reason），不是实时视频流。",
+      kpi_agv: "AGV 运行占比", kpi_agv_sub: "AGV 时间中处于运行的比例 · 平均 {n} 台 AGV 在画面内",
+      machines_moving_ratio: "设备运行",
+      site_w017: "w017 仓库 · 机器人作业区", site_run: "叉车安全场景 · 第 {n} 次",
+      sep_contact: "接触", "sep_<1m": "不到 1 米", "sep_1-2m": "1–2 米", "sep_2-4m": "2–4 米", "sep_>4m": "超过 4 米",
+      basis_title: "判定依据",
+      basis_views: "多视角一致：{c}/{ct} 个顶视视角、{e}/{et} 个平视视角判定为{type}。",
+      basis_kin: "运动轨迹（YOLO）：工人静止到 {onset}，随后 {n}/{ct} 个顶视视角检测到突然加速逃离（峰值约 {p} m/s）{hidden}。",
+      basis_hidden: "；{n} 个视角中工人被物体遮挡",
+      basis_sep: "最近距离（VLM 估计）：{s}，约在 {t}{spread}。",
+      basis_spread: "（各视角相差 {s} 秒）",
+      basis_vlm: "模型描述（Cosmos3-Reason 英文原文）",
+      heat_sub: "每格平均人数 · YOLO「person」类，含人形机器人",
+      heat_legend: "红框 = 拥堵（同时 ≥4 人）· 蓝框 = 利用不足（平均 < 0.2 人）",
+      whole_avg: "5 分钟整段平均", per_zone: "每格人数",
+      mach_hint: "橙色阴影 = 设备低利用时段（60 秒内运行设备不到 40%）· 点击图表查看该 5 秒片段",
+      agv_line: "竖线 = 40% 关注线",
+      row_far: "远排", row_mid: "中排", row_near: "近排", zone: "{row}第 {col} 格",
+      fl_machine_surplus: "平均 {n} 台设备在画面内，只有 {v} 在运行（低于 {th} 即标记）",
+      fl_congestion: "同一格同时最多 {v} 人（超过 {th} 即标记）",
+      fl_underused_zone: "整段视频这一格平均只有 {v} 人（低于 {th} 即标记）",
+      report_note: "表格直接由分析数据计算；可选的 AI 叙述会逐个核对数字。",
+      gen_ai_opt: "添加 AI 叙述",
     },
   };
 
@@ -179,10 +222,8 @@
   };
   const S = {
     lang: saved.get("lang", "en") === "zh" ? "zh" : "en",
-    acked: new Set(saved.get("acked", [])),
     data: null, idx: null, byId: null, version: null, kind: null, newIds: new Set(),
     view: "overview", arg: "", cleanups: [], boxes: true,
-    filters: { type: "", site: "", sev: { high: true, medium: true, low: true }, showAcked: true },
     res: { site: null, camera: null, t: null, flag: null, rec: null, layer: "occupancy" },
     replay: { site: null, t: 0, eye: false, boxes: false, rate: 1, focus: -1 },
     chat: [], asking: false,
@@ -222,7 +263,28 @@
   const sevLabel = (s) => label("sev_", s);
   const clipUrl = (src) => "api/clip?source=" + enc(src);
   const siteKind = (s) => s?.kind || (num(s?.duration_sec, 999) <= 60 ? "scenario" : "continuous");
-  const siteTitle = (id) => S.idx?.site[id]?.title || id || "";
+  const siteTitle = (id) => {
+    const run = /^w3_run(\d+)$/.exec(id || "");
+    if (run) return tr("site_run", { n: run[1] });
+    return I18N[S.lang]["site_" + id] ?? S.idx?.site[id]?.title ?? id ?? "";
+  };
+  const alertTitle = (e) => `${typeLabel(e.type)} · ${siteTitle(e.site_id)}`;
+  const sepLabel = (s) => (s ? label("sep_", s) : tr("no_value"));
+  const ROW_KEYS = ["row_far", "row_mid", "row_near"];
+  const zoneLabel = (z) => (Array.isArray(z) && z.length >= 2 ? tr("zone", { row: tr(ROW_KEYS[z[1]] || "row_mid"), col: z[0] + 1 }) : "");
+  function flagMetric(f) {
+    const m = f.metric || {};
+    return /ratio/.test(m.name || "") ? { v: pct(m.value), th: pct(m.threshold) } : { v: fmtNum(m.value, 2), th: fmtNum(m.threshold, 1) };
+  }
+  function flagText(f) {
+    if (S.lang !== "zh") return f.message || "";
+    const { v, th } = flagMetric(f);
+    if (f.type === "machine_surplus") {
+      const n = /([\d.]+) machines in view/.exec(f.message || "");
+      return tr("fl_machine_surplus", { n: n ? n[1] : tr("no_value"), v, th });
+    }
+    return tr("fl_" + f.type, { v, th });
+  }
   const flagStrength = (f) => { const m = f.metric || {}; const th = num(m.threshold); return th ? Math.abs(num(m.value) - th) / Math.abs(th) : 0; };
 
   const icon = (body) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`;
@@ -374,24 +436,17 @@
 
   // ===================================================================== header
   function updateHeader() {
-    const pill = $("#dataPill");
-    pill.className = "pill " + (S.kind === "real" ? "ok" : "warn");
-    pill.textContent = S.kind === "real" ? tr("data_real") : tr("data_mock");
-    pill.title = `data version ${S.version || "?"}`;
-    const open = (S.data?.events || []).filter((e) => !S.acked.has(e.event_id)).length;
+    const at = S.data?.overview?.generated_at ? new Date(S.data.overview.generated_at) : null;
+    const when = at && !Number.isNaN(+at)
+      ? at.toLocaleString(S.lang === "zh" ? "zh-CN" : "en-GB", { month: S.lang === "zh" ? "long" : "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })
+      : tr("no_value");
+    const pill = $("#batchPill");
+    pill.textContent = tr(S.kind === "mock" ? "batch_mock" : "batch", { t: when });
+    pill.title = tr("batch_tip");
+    const n = (S.data?.events || []).length;
     const badge = $("#alertBadge");
-    badge.hidden = !open;
-    badge.textContent = open;
-  }
-
-  function setConn(h) {
-    const vssOk = !!(h?.vss?.chunks > 0);
-    const v = $("#vssPill"), c = $("#cosmosPill");
-    v.classList.toggle("ok", vssOk); v.classList.toggle("bad", !vssOk);
-    v.title = vssOk ? `${h.vss.chunks} chunks in the live VSS inventory` : "VSS unreachable — using stored URIs";
-    const llmOk = !!(h?.llm?.available || h?.cosmos);
-    c.classList.toggle("ok", llmOk); c.classList.toggle("bad", !llmOk);
-    c.title = llmOk ? (h?.llm?.model || h?.llm?.kind || "text LLM available") : "Language model unavailable — fallbacks active";
+    badge.hidden = !n;
+    badge.textContent = n;
   }
 
   function applyStatic() {
@@ -783,14 +838,14 @@
   function safetyCard(c) {
     const e = c.event, r = c.reaction;
     const media = c.clip ? `<video class="thumb hover-play" muted playsinline preload="metadata" src="${clipUrl(c.clip)}#t=${num(c.clip_t).toFixed(1)}"></video>` : "";
-    const href = e ? `#alerts/${enc(e.event_id)}` : `#replay/${enc(c.site_id)}@0`;
+    const href = e ? `#alerts/${enc(e.event_id)}` : "#alerts";
     const sev = e?.severity;
     const verdict = !r ? `<span class="muted">${tr("r_none")}</span>`
-      : `<span class="r-tags">${dangerTag(r, sev)}${r.min_separation ? `<span class="muted small">${tr("r_sep", { s: r.min_separation })}</span>` : ""}</span>`;
+      : `<span class="r-tags">${dangerTag(r, sev)}${r.min_separation ? `<span class="muted small">${tr("r_sep", { s: sepLabel(r.min_separation) })}</span>` : ""}</span>`;
     return `<a class="task-card safety st-${esc(c.status)}" href="${href}">
       <div class="thumb-wrap">${media}<span class="cam-tag">${ICON.camera}${esc(c.site_id)} · ${esc(c.camera)}</span><span class="st-pill"><i></i>${tr("status_" + c.status)}</span></div>
       <div class="task-body">
-        <div class="task-title"><b>${esc(c.title)}</b><span class="muted small">${tr("views_n", { n: c.views })} · ${fmtT(c.duration_sec)}</span></div>
+        <div class="task-title"><b>${esc(siteTitle(c.site_id))}</b><span class="muted small">${tr("views_n", { n: c.views })} · ${fmtT(c.duration_sec)}</span></div>
         ${e ? `<div class="task-verdict"><span class="sev-tag sev-${esc(e.severity)}">${esc(sevLabel(e.severity))}</span><span>${typeIcon(e.type)}${esc(typeLabel(e.type))}</span><span class="mono">@ ${fmtT(e.scene_t)}</span><span class="mono muted">${pct(e.confidence)}</span></div>`
           : `<div class="task-verdict muted">${tr("no_alerts_site")}</div>`}
         ${r ? `<div class="task-metrics">${peakMetric(r, tr("r_peak"))}${marginMetric(r, sev, tr("r_margin_sub"))}</div>` : ""}
@@ -813,41 +868,24 @@
         <div class="task-metrics four">
           ${lead}
           ${lane ? metric(pct(c.agv_moving_ratio), tr("agv_moving")) : ""}
-          ${metric(pct(c.agv_loaded_ratio), tr("agv_loaded"))}
+          ${metric(pct(c.machine_moving_ratio), tr("machines_moving_ratio"))}
           ${metric(fmtNum(c.stationary_avg), `${tr("stationary")} · ${tr("per_avg")}`, num(c.stationary_avg) >= 3 ? "amber" : "")}
           ${lane ? "" : metric(ratioOrDash(c.amr_moving_ratio), tr("amr_moving"))}
         </div>
         <div class="task-sub muted small">${tr("humanoid_moving")} <b>${ratioOrDash(c.humanoid_moving_ratio)}</b>${lane ? ` · ${tr("amr_moving")} <b>${ratioOrDash(c.amr_moving_ratio)}</b>` : ""}</div>
         <div class="task-spark">${spark}<span class="muted small">${tr("machines_moving_spark")}</span></div>
-        <div class="task-foot"><span class="muted small">${fmtNum(c.machines_moving_now)}/${fmtNum(c.machines_total_now)} ${tr("machines")} ${tr("moving")}</span><span class="link">${tr("open_resources")} →</span></div>
+        <div class="task-foot"><span></span><span class="link">${tr("open_resources")} →</span></div>
       </div></a>`;
   }
 
-  function feedItem(e, i) {
-    const acked = S.acked.has(e.event_id);
-    const side = S.newIds.has(e.event_id) ? `<span class="new">${tr("new")}</span>` : acked ? `<span class="ackd">${ICON.check}</span>` : `<span class="sev-tag sev-${esc(e.severity)}">${esc(sevLabel(e.severity))}</span>`;
-    return `<a class="feed-item sev-${esc(e.severity)}${acked ? " acked" : ""}" href="#alerts/${enc(e.event_id)}" style="--i:${i}">
-      <span class="sev-bar"></span><span class="feed-ico">${typeIcon(e.type)}</span>
-      <span class="feed-main"><b>${esc(e.title || typeLabel(e.type))}</b><small>${esc(e.site_id)} · ${esc(e.camera)} · ${esc(typeLabel(e.type))} · ${pct(e.confidence)}</small></span>
-      <span class="feed-side"><span class="mono">${fmtT(e.scene_t)}</span>${side}</span></a>`;
-  }
-
-  const flagItem = (f) => `<a class="flag-item" href="#resources/${enc(f.flag_id)}" style="--c:${FLAG_COLOR[f.type] || C.slate}">
-      <span class="ftag">${esc(flagLabel(f.type))}</span><span class="flag-msg">${esc(f.message || "")}</span>
-      <span class="mono flag-val">${esc(fmtScalar(num((f.metric || {}).value)))}<small>/${esc(fmtScalar(num((f.metric || {}).threshold)))}</small></span></a>`;
-
-  const recItem = (r, i) => `<a class="rec-item" href="#resources/${enc(r.rec_id)}"><span class="rec-num">${i + 1}</span>
-      <span><b>${esc(r.title || "")}</b><small>${esc(r.expected_impact || r.action || "")}</small></span></a>`;
-
   function renderOverview(el) {
     const o = S.data.overview || {}, k = o.kpis || {};
-    const open = S.data.events.filter((e) => !S.acked.has(e.event_id));
-    const sevCount = (s) => open.filter((e) => e.severity === s).length;
+    const all = S.data.events;
+    const sevCount = (s) => all.filter((e) => e.severity === s).length;
     const safety = (o.safety_cards || []).slice(0, 3);
     const eff = (o.efficiency_cards || []).slice(0, 3);
-    const recs = (o.top_recommendations || []).slice(0, 3);
     const alertsKpi = `<div class="kpi accent-red"><div class="kpi-h">${ICON.alert}<span>${tr("kpi_alerts")}</span></div>
-      <div class="kpi-v">${open.length}</div>
+      <div class="kpi-v">${all.length}</div>
       <div class="sev-row">${["high", "medium", "low"].map((s) => `<span class="sev-tag sev-${s}">${sevLabel(s)} ${sevCount(s)}</span>`).join("")}</div></div>`;
     const runs = k.safety_runs ?? safety.length;
     const forced = `${num(k.reaction_forced)}<small> / ${runs}</small>`;
@@ -859,7 +897,7 @@
         </div>
         <div class="kpi-group efficiency"><span class="kpi-theme">${ICON.machine}${tr("sec_eff")}</span>
           ${kpiCard(ICON.machine, tr("kpi_fleet"), pct(k.machine_moving_ratio), tr("kpi_fleet_sub", { n: k.floor_cameras ?? eff.length }), "orange", k.machine_moving_ratio)}
-          ${kpiCard(ICON.bars, tr("kpi_agv_loaded"), pct(k.agv_loaded_ratio), tr("kpi_agv_loaded_sub", { p: pct(k.agv_moving_ratio), n: fmtNum(k.agv_avg) }), "blue", k.agv_loaded_ratio)}
+          ${kpiCard(ICON.bars, tr("kpi_agv"), pct(k.agv_moving_ratio), tr("kpi_agv_sub", { n: fmtNum(k.agv_avg) }), "blue", k.agv_moving_ratio)}
         </div>
       </section>
       <section class="task-row safety">
@@ -869,9 +907,7 @@
       <section class="task-row efficiency">
         <div class="task-h"><h2>${ICON.machine}${tr("sec_eff")}</h2><span class="muted">${tr("sec_eff_sub")}</span><a class="link" href="#resources">${tr("view_all")} →</a></div>
         <div class="task-grid">${eff.map(efficiencyCard).join("") || emptyState(ICON.bars, tr("no_util"))}</div>
-      </section>
-      ${recs.length ? `<section class="rec-strip"><div class="task-h"><h2>${ICON.spark}${tr("top_recs")}</h2></div>
-        <div class="rec-items row">${recs.map(recItem).join("")}</div></section>` : ""}`;
+      </section>`;
     $$("video.thumb", el).forEach((v) => {
       onCleanup(() => stopVideo(v));
       if (!v.classList.contains("hover-play")) return;
@@ -882,48 +918,23 @@
   }
 
   // ===================================================================== safety alerts
-  function visibleAlerts() {
-    const F = S.filters;
-    return S.data.events.filter((e) => (!F.type || e.type === F.type) && (!F.site || e.site_id === F.site)
-      && F.sev[e.severity] !== false && (F.showAcked || !S.acked.has(e.event_id)));
-  }
-
   function renderAlerts(el, arg) {
-    const F = S.filters;
-    if (!S.data.events.length) { el.innerHTML = `<div class="card">${emptyState(ICON.shield, tr("alerts_none"))}</div>`; return; }
-    const types = [...new Set(S.data.events.map((e) => e.type))];
-    const sites = [...new Set(S.data.events.map((e) => e.site_id))];
+    const events = S.data.events;
+    if (!events.length) { el.innerHTML = `<div class="card">${emptyState(ICON.shield, tr("alerts_none"))}</div>`; return; }
+    let selected = S.byId.event[arg] ? arg : events[0].event_id;
     el.innerHTML = `
       <div class="alerts-layout">
         <aside class="card alert-list">
-          <div class="card-h"><h2>${ICON.shield}${tr("nav_alerts")}</h2><span class="count" id="alCount"></span></div>
-          <div class="filters">
-            <select id="fType" aria-label="type"><option value="">${tr("all_types")}</option>${types.map((x) => `<option value="${esc(x)}"${F.type === x ? " selected" : ""}>${esc(typeLabel(x))}</option>`).join("")}</select>
-            <select id="fSite" aria-label="site"><option value="">${tr("all_sites")}</option>${sites.map((x) => `<option value="${esc(x)}"${F.site === x ? " selected" : ""}>${esc(x)}</option>`).join("")}</select>
-            <div class="sev-filter">${["high", "medium", "low"].map((s) => `<button type="button" class="chip sev-${s}${F.sev[s] ? " on" : ""}" data-sev="${s}">${sevLabel(s)}</button>`).join("")}</div>
-            <label class="toggle"><input type="checkbox" id="fAcked"${F.showAcked ? " checked" : ""}><span>${tr("show_acked")}</span></label>
-          </div>
-          <div class="list" id="alList"></div>
+          <div class="card-h"><h2>${ICON.shield}${tr("nav_alerts")}</h2><span class="count">${events.length}</span></div>
+          <div class="list" id="alList">${events.map((e) => `
+            <a class="al-item sev-${esc(e.severity)}${e.event_id === selected ? " sel" : ""}" href="#alerts/${enc(e.event_id)}" data-id="${esc(e.event_id)}">
+              <span class="sev-bar"></span><span class="feed-ico">${typeIcon(e.type)}</span>
+              <span class="al-main"><b>${esc(siteTitle(e.site_id))}</b><small>${esc(e.camera)} · ${fmtT(e.scene_t)}</small>
+                <span class="al-tags"><span class="sev-tag sev-${esc(e.severity)}">${esc(sevLabel(e.severity))}</span><span class="tag">${esc(typeLabel(e.type))}</span>${e.reaction ? dangerTag(e.reaction, e.severity) : ""}</span></span></a>`).join("")}</div>
         </aside>
         <section class="alert-detail" id="alDetail"></section>
       </div>`;
-    let selected = S.byId.event[arg] ? arg : null;
-    const drawList = () => {
-      const items = visibleAlerts();
-      if (!selected || !S.byId.event[selected]) selected = items[0]?.event_id || null;
-      $("#alCount").textContent = items.length;
-      $("#alList").innerHTML = items.map((e) => `
-        <a class="al-item sev-${esc(e.severity)}${e.event_id === selected ? " sel" : ""}${S.acked.has(e.event_id) ? " acked" : ""}" href="#alerts/${enc(e.event_id)}" data-id="${esc(e.event_id)}">
-          <span class="sev-bar"></span><span class="feed-ico">${typeIcon(e.type)}</span>
-          <span class="al-main"><b>${esc(e.title || typeLabel(e.type))}</b><small>${esc(e.site_id)} · ${esc(e.camera)} · ${fmtT(e.scene_t)}</small>
-            <span class="al-tags"><span class="sev-tag sev-${esc(e.severity)}">${esc(sevLabel(e.severity))}</span><span class="tag">${esc(typeLabel(e.type))}</span><span class="tag mono">${pct(e.confidence)}</span>${S.acked.has(e.event_id) ? `<span class="tag ok">${ICON.check}${tr("acked")}</span>` : ""}</span></span></a>`).join("")
-        || emptyState(ICON.shield, tr("alerts_empty"));
-    };
-    const drawDetail = () => {
-      runCleanups();
-      renderAlertDetail($("#alDetail"), S.byId.event[selected], () => { drawList(); updateHeader(); });
-    };
-    drawList();
+    const drawDetail = () => { runCleanups(); renderAlertDetail($("#alDetail"), S.byId.event[selected]); };
     drawDetail();
     $("#alList").addEventListener("click", (ev) => {
       const a = ev.target.closest(".al-item");
@@ -934,62 +945,62 @@
       $$(".al-item", el).forEach((x) => x.classList.toggle("sel", x === a));
       drawDetail();
     });
-    const refilter = () => { const prev = selected; drawList(); if (selected !== prev) drawDetail(); };
-    $("#fType").onchange = (ev) => { F.type = ev.target.value; refilter(); };
-    $("#fSite").onchange = (ev) => { F.site = ev.target.value; refilter(); };
-    $("#fAcked").onchange = (ev) => { F.showAcked = ev.target.checked; refilter(); };
-    $$("[data-sev]", el).forEach((b) => { b.onclick = () => { F.sev[b.dataset.sev] = !F.sev[b.dataset.sev]; b.classList.toggle("on"); refilter(); }; });
   }
 
-  function renderAlertDetail(host, e, onAck) {
+  function basisLines(e) {
+    const ev = e.evidence || {}, cons = ev.consensus || {}, kin = ev.kinematics || {}, vlm = ev.vlm || {}, r = e.reaction || {};
+    const views = e.views || [];
+    const count = (prefix) => views.filter((v) => String(v.camera).startsWith(prefix)).length;
+    const votes = (o) => num((o || {})[e.type]);
+    const ceiling = count("ceiling"), eye = count("eye");
+    const lines = [];
+    if (ceiling || eye) lines.push(tr("basis_views", { c: votes(cons.ceiling_votes), ct: ceiling, e: votes(cons.eye_votes), et: eye, type: typeLabel(e.type) }));
+    const perView = (kin.per_view || []).filter((v) => String(v.camera).startsWith("ceiling"));
+    const evasive = perView.filter((v) => v.evasive_t != null).length;
+    if (evasive) {
+      const hidden = num(r.hidden_views);
+      lines.push(tr("basis_kin", { onset: fmtT(r.onset_t ?? e.scene_t), n: evasive, ct: ceiling, p: num(r.peak_mps).toFixed(1),
+        hidden: hidden ? tr("basis_hidden", { n: hidden }) : "" }));
+    }
+    if (vlm.min_separation) {
+      lines.push(tr("basis_sep", { s: sepLabel(vlm.min_separation), t: fmtT(cons.t_vlm ?? vlm.closest_approach_sec),
+        spread: r.closest_spread_sec ? tr("basis_spread", { s: num(r.closest_spread_sec).toFixed(1) }) : "" }));
+    }
+    return lines;
+  }
+
+  function renderAlertDetail(host, e) {
     if (!e) { host.innerHTML = `<div class="card">${emptyState(ICON.shield, tr("select_alert"))}</div>`; return; }
-    const ev = e.evidence || {};
+    const vlm = (e.evidence || {}).vlm || {};
     const views = (e.views || []).filter((v) => v && v.source);
-    if (!views.length && e.source) views.push({ camera: e.camera, source: e.source, t_in_segment: e.t_in_segment, label: tr("primary"), confidence: e.confidence });
+    if (!views.length && e.source) views.push({ camera: e.camera, source: e.source, t_in_segment: e.t_in_segment });
     let active = Math.max(0, views.findIndex((v) => v.camera === e.camera));
-    const acked = S.acked.has(e.event_id);
-    const replayT = Math.max(0, num(e.scene_t) - 2).toFixed(1);
+    const summary = typeof vlm.summary === "string" ? vlm.summary : "";
     host.innerHTML = `
       <div class="card detail sev-${esc(e.severity)}">
         <div class="detail-h">
           <div>
-            <div class="detail-tags"><span class="sev-badge sev-${esc(e.severity)}">${esc(sevLabel(e.severity))}</span><span class="type-badge">${typeIcon(e.type)}${esc(typeLabel(e.type))}</span><span class="muted mono small">${esc(e.event_id)}</span></div>
-            <h1>${esc(e.title || typeLabel(e.type))}</h1>
-            <div class="detail-meta"><span>${esc(siteTitle(e.site_id))}</span><span>${ICON.camera}<b>${esc(e.camera)}</b></span>
-              <span>${tr("scene_time")} <b class="mono">${fmtT(e.scene_t)}</b></span><span>${tr("seg_time")} <span class="mono">${num(e.t_in_segment).toFixed(1)} s</span></span>
+            <div class="detail-tags"><span class="sev-badge sev-${esc(e.severity)}">${esc(sevLabel(e.severity))}</span><span class="type-badge">${typeIcon(e.type)}${esc(typeLabel(e.type))}</span></div>
+            <h1>${esc(siteTitle(e.site_id))}</h1>
+            <div class="detail-meta"><span>${ICON.camera}<b>${esc(e.camera)}</b></span>
+              <span>${tr("scene_time")} <b class="mono">${fmtT(e.scene_t)}</b></span>
               <span class="conf">${tr("confidence")} <span class="conf-bar"><i style="width:${clamp(num(e.confidence) * 100, 0, 100)}%"></i></span><b class="mono">${pct(e.confidence)}</b></span></div>
           </div>
-          <button type="button" class="btn ${acked ? "ghost" : "primary"}" id="ackBtn">${acked ? ICON.check + tr("acked") : tr("ack")}</button>
         </div>
         <div id="player"></div>
         <div class="views-row"><span class="label">${tr("views_title")}</span><div class="chips" id="viewChips"></div></div>
-        ${e.description ? `<p class="desc">${esc(e.description)}</p>` : ""}
         ${e.reaction ? `<div class="reaction-strip ${dangerTone(e.severity)}">
           ${peakMetric(e.reaction, tr("r_peak"))}
           ${metric(e.reaction.onset_t != null ? fmtT(e.reaction.onset_t) : tr("no_value"), tr("r_onset"))}
           ${marginMetric(e.reaction, e.severity, `${tr("r_margin")} · ${tr("r_margin_sub")}`)}
           <span class="r-tags col">${(e.reaction.danger?.length ? e.reaction.danger : [e.reaction.verdict || "close_pass"])
             .map((v) => dangerTag({ verdict: v }, e.severity)).join("")}</span></div>` : ""}
-        <h3 class="sec-h">${tr("evidence")}</h3>
-        <div class="evidence">
-          <div class="ev-card"><div class="ev-h">${ICON.spark}${tr("ev_vlm")}</div>${renderValue(ev.vlm)}</div>
-          <div class="ev-card"><div class="ev-h">${ICON.chart}${tr("ev_kin")}</div>${renderValue(ev.kinematics)}</div>
-          <div class="ev-card cons"><div class="ev-h">${ICON.check}${tr("ev_cons")}</div>${renderValue(ev.consensus)}</div>
-        </div>
-        <h3 class="sec-h">${tr("cmp_title")}</h3>
-        <div class="compare">
-          <div class="cmp old"><div class="cmp-h">✕ ${tr("cmp_old")}</div><blockquote>${esc(ev.pipeline_caption_said || tr("no_caption"))}</blockquote><div class="cmp-foot">${tr("cmp_old_foot")}</div></div>
-          <div class="cmp new"><div class="cmp-h">✓ ${tr("cmp_new")}</div>
-            <p class="cmp-verdict"><span class="sev-tag sev-${esc(e.severity)}">${esc(sevLabel(e.severity))}</span><b>${esc(typeLabel(e.type))}</b> @ <span class="mono">${fmtT(e.scene_t)}</span> · ${pct(e.confidence)}</p>
-            <p>${esc((typeof ev.vlm?.summary === "string" && ev.vlm.summary) || e.description || e.title || "")}</p><div class="cmp-foot">${tr("cmp_new_foot")}</div></div>
-        </div>
-        <div class="detail-actions">
-          <a class="btn" href="#replay/${enc(e.site_id)}@${replayT}">${ICON.grid}${tr("open_replay")}</a>
-          <a class="btn" href="#ask/${enc(tr("ask_about_q", { id: e.event_id }))}">${ICON.chat}${tr("ask_about")}</a>
-        </div>
+        <h3 class="sec-h">${tr("basis_title")}</h3>
+        <ul class="basis">${basisLines(e).map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
+        ${summary ? `<div class="basis-quote"><span class="k">${ICON.spark}${tr("basis_vlm")}</span><blockquote>${esc(summary)}</blockquote></div>` : ""}
       </div>`;
     const drawChips = () => {
-      $("#viewChips", host).innerHTML = views.map((v, i) => `<button type="button" class="chip view-chip${i === active ? " on" : ""}" data-i="${i}">${ICON.camera}${esc(v.camera)}${v.label ? ` <small>${esc(humanize(v.label))}</small>` : ""}${v.confidence != null ? ` <b class="mono">${pct(v.confidence)}</b>` : ""}</button>`).join("");
+      $("#viewChips", host).innerHTML = views.map((v, i) => `<button type="button" class="chip view-chip${i === active ? " on" : ""}" data-i="${i}">${ICON.camera}${esc(v.camera)}${v.label ? ` <small>${esc(typeLabel(v.label))}</small>` : ""}</button>`).join("");
     };
     const play = () => {
       const v = views[active];
@@ -1013,15 +1024,6 @@
       drawChips();
       play();
     });
-    $("#ackBtn", host).onclick = () => {
-      if (S.acked.has(e.event_id)) S.acked.delete(e.event_id); else S.acked.add(e.event_id);
-      saved.set("acked", [...S.acked]);
-      const b = $("#ackBtn", host), on = S.acked.has(e.event_id);
-      b.className = "btn " + (on ? "ghost" : "primary");
-      b.innerHTML = on ? ICON.check + tr("acked") : tr("ack");
-      if (on) toast(`${tr("acked")}: ${e.title || e.event_id}`);
-      onAck?.();
-    };
   }
 
   // ===================================================================== resources & bottlenecks
@@ -1044,120 +1046,87 @@
     const R = S.res;
     applyResArg(arg);
     const utilCams = S.data.util.cameras;
-    const sites = S.idx.sites.filter((s) => utilCams.some((c) => c.site_id === s.site_id));
+    const sites = S.idx.sites.filter((s) => siteKind(s) === "continuous" && utilCams.some((c) => c.site_id === s.site_id));
     if (!sites.length) { el.innerHTML = `<div class="card">${emptyState(ICON.bars, tr("no_util"))}</div>`; return; }
     if (!sites.some((s) => s.site_id === R.site)) { R.site = sites[0].site_id; R.camera = null; R.t = null; }
-    const cams = utilCams.filter((c) => c.site_id === R.site)
-      .sort((a, b) => (({ ceiling: 0, eye: 1 })[a.view] ?? 0) - (({ ceiling: 0, eye: 1 })[b.view] ?? 0) || String(a.camera).localeCompare(String(b.camera)));
-    const siteFlags = S.data.util.flags.filter((f) => f.site_id === R.site).sort((a, b) => flagStrength(b) - flagStrength(a));
-    if (!cams.some((c) => c.camera === R.camera)) {
-      R.camera = (siteFlags[0] && cams.some((c) => c.camera === siteFlags[0].camera) ? siteFlags[0].camera : cams[0].camera);
-      R.t = null;
-    }
+    const cams = utilCams.filter((c) => c.site_id === R.site).sort((a, b) => String(a.camera).localeCompare(String(b.camera)));
+    const order = { machine_surplus: 0, congestion: 1, underused_zone: 2 };
+    const siteFlags = S.data.util.flags.filter((f) => f.site_id === R.site)
+      .sort((a, b) => (order[a.type] ?? 9) - (order[b.type] ?? 9) || num(a.scene_t0) - num(b.scene_t0));
+    if (!cams.some((c) => c.camera === R.camera)) { R.camera = cams[0].camera; R.t = null; }
     const cam = cams.find((c) => c.camera === R.camera);
-    const site = S.idx.site[R.site];
-    const siteIds = new Set([...siteFlags.map((f) => f.flag_id), ...S.data.events.filter((e) => e.site_id === R.site).map((e) => e.event_id)]);
-    const allRecs = S.data.recs.recommendations || [];
-    const recs = allRecs.filter((r) => (r.refs || []).some((id) => siteIds.has(id)));
-    const recList = recs.length ? recs : allRecs;
     const agvShare = (c) => num(c.fleet?.types?.agv?.moving_ratio);
     const agvItems = cams.map((c) => ({ key: c.camera, label: c.camera, value: agvShare(c), color: agvShare(c) < 0.4 ? C.amber : C.cyan }));
     R.layer = "occupancy";
-    const utilItems = cams.map((c) => ({ key: c.camera, label: c.camera, value: num(c.totals?.machine_moving_ratio), color: C.orange }));
     el.innerHTML = `<div class="res-root">
       <div class="res-head">
-        <div class="seg-tabs">${sites.map((s) => `<button type="button" class="seg${s.site_id === R.site ? " on" : ""}" data-site="${esc(s.site_id)}"><b>${esc(s.site_id)}</b><small>${esc(siteKind(s) === "scenario" ? tr("scenario") : (s.cameras || []).length + " " + tr("camera").toLowerCase())}</small></button>`).join("")}</div>
+        ${sites.length > 1 ? `<div class="seg-tabs">${sites.map((s) => `<button type="button" class="seg${s.site_id === R.site ? " on" : ""}" data-site="${esc(s.site_id)}"><b>${esc(s.site_id)}</b></button>`).join("")}</div>` : "<div></div>"}
         <div class="chips cam-chips">${cams.map((c) => `<button type="button" class="chip${c.camera === R.camera ? " on" : ""}" data-cam="${esc(c.camera)}">${esc(c.camera)} <small>${esc(viewLabel(c.view))}</small></button>`).join("")}</div>
       </div>
-      <div class="res-title"><h1>${esc(site?.title || R.site)}</h1><span class="muted">${esc(R.camera)} · ${esc(viewLabel(cam?.view))} · ${tr("avg")} ${fmtNum(cam?.totals?.people_avg)} ${tr("people")} · ${pct(cam?.totals?.machine_moving_ratio)} ${tr("machines")} ${tr("moving")}${cam?.fleet?.types?.agv ? ` · ${tr("agv_moving")} ${pct(agvShare(cam))} · ${tr("agv_loaded")} ${pct(cam.fleet.types.agv.loaded_ratio)}` : ""}</span></div>
+      <div class="res-title"><h1>${esc(siteTitle(R.site))}</h1><span class="muted">${esc(R.camera)} · ${esc(viewLabel(cam?.view))} · ${tr("machines_moving_ratio")} ${pct(cam?.totals?.machine_moving_ratio)}${cam?.fleet?.types?.agv ? ` · ${tr("agv_moving")} ${pct(agvShare(cam))}` : ""}</span></div>
       <div class="res-grid">
-        <div class="card res-people"><div class="card-h"><h2>${ICON.users}${tr("people_time")}</h2>
-          <div class="legend"><span style="--c:${C.cyan}">${tr("s_people")}</span><span style="--c:${C.green}">${tr("s_moving")}</span></div></div>
-          <div class="chart-host" id="chPeople"></div><p class="hint">${tr("chart_hint")}</p></div>
-        <div class="card res-heat"><div class="card-h"><h2>${ICON.grid}${tr("heatmap")}</h2>
-          <span class="muted small">${tr("occupancy")}</span></div>
-          <div class="heat-wrap" id="heat"><video muted playsinline preload="auto"></video><canvas></canvas><div class="heat-cap mono"></div></div>
-          <div id="segDetail" class="seg-detail"></div></div>
         <div class="card res-mach"><div class="card-h"><h2>${ICON.machine}${tr("machines_time")}</h2>
-          <div class="legend"><span style="--c:${C.slate}">${tr("s_m_total")}</span><span style="--c:${C.orange}">${tr("s_m_moving")}</span><span style="--c:${C.cyan}">${tr("s_agv_moving")}</span><span style="--c:${C.green}">${tr("s_agv_loaded")}</span></div></div>
-          <div class="chart-host" id="chMach"></div></div>
-        <div class="card res-bars"><div class="card-h"><h2>${ICON.bars}${tr("agv_by_cam")}</h2></div>${barList(agvItems, { selected: R.camera, threshold: 0.4 })}
-          <div class="card-h sub"><h2>${ICON.machine}${tr("util_by_cam")}</h2></div>${barList(utilItems, { selected: R.camera })}</div>
+          <div class="legend"><span style="--c:${C.slate}">${tr("s_m_total")}</span><span style="--c:${C.orange}">${tr("s_m_moving")}</span><span style="--c:${C.cyan}">${tr("s_agv_moving")}</span></div></div>
+          <div class="chart-host" id="chMach"></div><p class="hint">${tr("mach_hint")}</p></div>
+        <div class="card res-heat"><div class="card-h"><h2>${ICON.grid}${tr("heatmap")}</h2>
+          <span class="muted small">${tr("heat_sub")}</span></div>
+          <div class="heat-wrap" id="heat"><video muted playsinline preload="auto"></video><canvas></canvas><div class="heat-cap mono"></div></div>
+          <p class="hint">${tr("heat_legend")}</p>
+          <div id="segDetail" class="seg-detail"></div></div>
+        <div class="card res-bars"><div class="card-h"><h2>${ICON.bars}${tr("agv_by_cam")}</h2><span class="muted small">${tr("agv_line")}</span></div>${barList(agvItems, { selected: R.camera, threshold: 0.4 })}</div>
         <div class="card res-flags"><div class="card-h"><h2>${ICON.flag}${tr("flags")}</h2><span class="count">${siteFlags.length}</span></div>
           <div class="flag-list">${siteFlags.map((f) => flagRow(f)).join("") || emptyState(ICON.flag, tr("no_flags"))}</div></div>
-        <div class="card res-recs"><div class="card-h"><h2>${ICON.spark}${tr("recs")}</h2></div>
-          <div class="rec-list">${recList.map((r, i) => recCard(r, i)).join("") || emptyState(ICON.spark, tr("no_recs"))}</div></div>
       </div></div>`;
     const heat = setupHeatmap($("#heat", el), cam);
     const drawCharts = () => {
       const series = cam.series || [];
       const pts = (key) => series.map((p) => ({ t: (num(p.scene_t0) + num(p.scene_t1)) / 2, v: num(p[key]) }));
       const t0 = series.length ? num(series[0].scene_t0) : 0;
-      const t1 = series.length ? num(series.at(-1).scene_t1) : num(site?.duration_sec, 1);
-      const span = t1 - t0;
-      const bands = siteFlags.filter((f) => f.camera === R.camera && num(f.scene_t1) - num(f.scene_t0) < span * 0.9)
-        .map((f) => ({ id: f.flag_id, t0: num(f.scene_t0), t1: num(f.scene_t1), color: FLAG_COLOR[f.type] || C.slate, sel: f.flag_id === R.flag, label: `${flagLabel(f.type)} · ${f.message || ""}` }));
-      const markers = S.data.events.filter((e) => e.site_id === R.site && (e.camera === R.camera || (e.views || []).some((v) => v.camera === R.camera)))
-        .map((e) => ({ id: e.event_id, t: num(e.scene_t), color: SEV_COLOR[e.severity] || C.red, label: `${typeLabel(e.type)} @ ${fmtT(e.scene_t)}` }));
+      const t1 = series.length ? num(series.at(-1).scene_t1) : num(S.idx.site[R.site]?.duration_sec, 1);
+      const bands = siteFlags.filter((f) => f.camera === R.camera && f.type === "machine_surplus")
+        .map((f) => ({ id: f.flag_id, t0: num(f.scene_t0), t1: num(f.scene_t1), color: FLAG_COLOR[f.type], sel: f.flag_id === R.flag, label: `${flagLabel(f.type)} · ${flagText(f)}` }));
       const points = series.map((p) => ({ ...p, t: (num(p.scene_t0) + num(p.scene_t1)) / 2, t0: num(p.scene_t0) }));
-      $("#chPeople", el).innerHTML = lineChart({ t0, t1, height: 220, bands, markers, cursor: R.t != null ? R.t + 2.5 : null,
-        series: [{ points: pts("people"), color: C.cyan, area: true }, { points: pts("moving"), color: C.green, dash: true }] });
       const hasAgv = series.some((p) => p.agv_total != null);
-      $("#chMach", el).innerHTML = lineChart({ t0, t1, height: 170, markers, cursor: R.t != null ? R.t + 2.5 : null,
+      $("#chMach", el).innerHTML = lineChart({ t0, t1, height: 220, bands, markers: [], cursor: R.t != null ? R.t + 2.5 : null,
         series: [{ points: pts("machines_total"), color: C.slate, dash: true }, { points: pts("machines_moving"), color: C.orange, area: true },
-          ...(hasAgv ? [{ points: pts("agv_moving"), color: C.cyan }, { points: pts("agv_loaded"), color: C.green, dash: true }] : [])] });
-      const tipPeople = (p) => `<b>${fmtT(p.scene_t0)}–${fmtT(p.scene_t1)}</b><span style="--c:${C.cyan}">${tr("s_people")} ${fmtNum(p.people)}</span><span style="--c:${C.green}">${tr("s_moving")} ${fmtNum(p.moving)}</span>`;
+          ...(hasAgv ? [{ points: pts("agv_moving"), color: C.cyan }] : [])] });
       const tipMach = (p) => `<b>${fmtT(p.scene_t0)}–${fmtT(p.scene_t1)}</b><span style="--c:${C.slate}">${tr("s_m_total")} ${fmtNum(p.machines_total)}</span><span style="--c:${C.orange}">${tr("s_m_moving")} ${fmtNum(p.machines_moving)}</span>`
-        + (p.agv_total != null ? `<span style="--c:${C.cyan}">${tr("s_agv_moving")} ${fmtNum(p.agv_moving)}/${fmtNum(p.agv_total)}</span><span style="--c:${C.green}">${tr("s_agv_loaded")} ${fmtNum(p.agv_loaded)}</span>` : "");
+        + (p.agv_total != null ? `<span style="--c:${C.cyan}">${tr("s_agv_moving")} ${fmtNum(p.agv_moving)}/${fmtNum(p.agv_total)}</span>` : "");
       const pick = ({ t, flag }) => {
         if (flag) { const f = S.byId.flag[flag]; R.flag = flag; R.t = num(f?.scene_t0); history.replaceState(null, "", "#resources/" + enc(flag)); markFlags(); }
         else { R.t = t; }
         drawCharts(); heat.update();
       };
-      bindChart($("#chPeople", el), { points, tip: tipPeople, onPick: pick });
       bindChart($("#chMach", el), { points, tip: tipMach, onPick: pick });
     };
     const markFlags = () => $$(".flag-row", el).forEach((r) => r.classList.toggle("sel", r.dataset.flag === R.flag));
     drawCharts();
-    if (R.rec) {
-      const recId = R.rec;
-      R.rec = null;
-      setTimeout(() => { const card = $(`#rec-${CSS.escape(recId)}`, el); card?.scrollIntoView({ behavior: "smooth", block: "center" }); card?.classList.add("flash"); }, 60);
-    }
     if (R.flag && arg) setTimeout(() => $(`.flag-row[data-flag="${CSS.escape(R.flag)}"]`, el)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 60);
     $(".res-root", el).addEventListener("click", (ev) => {
-      const siteBtn = ev.target.closest("[data-site]"), camBtn = ev.target.closest("[data-cam]"), flagEl = ev.target.closest(".flag-row"), layer = ev.target.closest("[data-layer]");
+      const siteBtn = ev.target.closest("[data-site]"), camBtn = ev.target.closest("[data-cam]"), flagEl = ev.target.closest(".flag-row");
       if (siteBtn) { Object.assign(R, { site: siteBtn.dataset.site, camera: null, t: null, flag: null, rec: null }); history.replaceState(null, "", "#resources/" + enc(R.site)); rerender(); }
       else if (camBtn) { Object.assign(R, { camera: camBtn.dataset.cam, t: null, flag: null }); history.replaceState(null, "", `#resources/${enc(R.site)}/${enc(R.camera)}`); rerender(); }
-      else if (flagEl && !ev.target.closest("a")) {
+      else if (flagEl) {
         const f = S.byId.flag[flagEl.dataset.flag];
         if (!f) return;
         Object.assign(R, { flag: f.flag_id, t: num(f.scene_t0) });
         history.replaceState(null, "", "#resources/" + enc(f.flag_id));
         if (f.camera !== R.camera) { R.camera = f.camera; rerender(); return; }
         markFlags(); drawCharts(); heat.update();
-      } else if (layer) { R.layer = layer.dataset.layer; $$("[data-layer]", el).forEach((b) => b.classList.toggle("on", b === layer)); heat.update(); }
+      }
     });
     function rerender() { runCleanups(); renderResources(el, ""); }
   }
 
   function flagRow(f) {
-    const m = f.metric || {};
-    const zone = Array.isArray(f.zone) && f.zone.length >= 2 ? ` · zone (${f.zone[0]},${f.zone[1]})` : "";
+    const m = f.metric || {}, { v, th } = flagMetric(f);
+    const zone = zoneLabel(f.zone);
     const ratio = num(m.threshold) ? clamp(num(m.value) / (num(m.threshold) * 2), 0, 1) : 0;
     return `<div class="flag-row${f.flag_id === S.res.flag ? " sel" : ""}" data-flag="${esc(f.flag_id)}" style="--c:${FLAG_COLOR[f.type] || C.slate}">
       <span class="ftag">${esc(flagLabel(f.type))}</span>
-      <div class="flag-main"><b>${esc(f.camera)}${esc(zone)} · <span class="mono">${fmtT(f.scene_t0)}–${fmtT(f.scene_t1)}</span></b><p>${esc(f.message || "")}</p></div>
-      <div class="flag-metric"><span class="mono small">${esc(humanize(m.name || ""))}</span><b class="mono">${esc(fmtScalar(num(m.value)))}</b>
-        <span class="mbar"><i style="width:${(ratio * 100).toFixed(0)}%"></i><em style="left:50%"></em></span><small>${tr("threshold")} ${esc(fmtScalar(num(m.threshold)))}</small></div></div>`;
-  }
-
-  function recCard(r, i) {
-    return `<div class="rec-card${r.rec_id === S.res.rec ? " sel" : ""}" id="rec-${esc(r.rec_id)}">
-      <div class="rec-h"><span class="rec-num">${i + 1}</span><b>${esc(r.title || "")}</b></div>
-      ${r.action ? `<p class="rec-action">${esc(r.action)}</p>` : ""}
-      <dl class="rec-kv">${r.rationale ? `<dt>${tr("rationale")}</dt><dd>${esc(r.rationale)}</dd>` : ""}${r.expected_impact ? `<dt>${tr("impact")}</dt><dd>${esc(r.expected_impact)}</dd>` : ""}</dl>
-      <div class="chips">${(r.refs || []).map(refChip).join("")}</div></div>`;
+      <div class="flag-main"><b>${esc(f.camera)}${zone ? ` · ${esc(zone)}` : ""} · <span class="mono">${fmtT(f.scene_t0)}–${fmtT(f.scene_t1)}</span></b><p>${esc(flagText(f))}</p></div>
+      <div class="flag-metric"><b class="mono">${esc(v)}</b>
+        <span class="mbar"><i style="width:${(ratio * 100).toFixed(0)}%"></i><em style="left:50%"></em></span><small>${tr("threshold")} ${esc(th)}</small></div></div>`;
   }
 
   function setupHeatmap(host, cam) {
@@ -1190,7 +1159,7 @@
       const nr = grid.length || num(zones.rows, 3), nc = grid[0]?.length || num(zones.cols, 4);
       const vw = video.videoWidth || 1920, vh = video.videoHeight || 1080;
       const sc = Math.min(cw / vw, chh / vh), ox = (cw - vw * sc) / 2, oy = (chh - vh * sc) / 2, W = vw * sc, H = vh * sc;
-      const max = Math.max(0.01, ...grid.flat().map((v) => num(v)));
+      const max = Math.max(HEAT_FULL_SCALE, ...grid.flat().map((v) => num(v)));
       const cellW = W / nc, cellH = H / nr;
       ctx.font = `700 ${Math.max(11, Math.min(18, cellH / 4))}px Inter, "Segoe UI", system-ui, sans-serif`;
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -1205,7 +1174,7 @@
           ctx.fillStyle = "rgba(2,6,23,.65)";
           ctx.fillRect(x + cellW / 2 - 24, y + cellH / 2 - 11, 48, 22);
           ctx.fillStyle = "#e2e8f0";
-          ctx.fillText(fmtNum(v), x + cellW / 2, y + cellH / 2 + 1);
+          ctx.fillText(v.toFixed(1), x + cellW / 2, y + cellH / 2 + 1);
         }
       }
       for (const f of S.data.util.flags) {
@@ -1217,7 +1186,7 @@
         ctx.strokeRect(ox + c * cellW + 2, oy + r * cellH + 2, cellW - 4, cellH - 4);
         ctx.setLineDash([]);
       }
-      cap.textContent = `${R.camera} · ${row ? `${fmtT(row.scene_t0)}–${fmtT(row.scene_t1)}` : tr("window_avg")} · ${tr("occupancy")}`;
+      cap.textContent = `${R.camera} · ${row ? `${fmtT(row.scene_t0)}–${fmtT(row.scene_t1)}` : tr("whole_avg")} · ${tr("per_zone")}`;
       renderSegDetail($("#segDetail"), row);
     }
     function update() { seekVideo(); draw(); }
@@ -1229,6 +1198,8 @@
     update();
     return { update };
   }
+
+  const HEAT_FULL_SCALE = 4; // people per zone at full red = the congestion threshold
 
   function heatColor(a) {
     const stops = [[34, 211, 238], [251, 191, 36], [244, 63, 94]];
@@ -1244,11 +1215,9 @@
     const mTotal = Object.values(m).reduce((s, x) => s + num(x?.total), 0), mMoving = Object.values(m).reduce((s, x) => s + num(x?.moving), 0);
     const vlm = typeof row.vlm_summary === "string" ? row.vlm_summary : row.vlm_summary ? JSON.stringify(row.vlm_summary) : "";
     host.innerHTML = `
-      <div class="seg-h"><b>${tr("seg_detail", { t: `${fmtT(row.scene_t0)}–${fmtT(row.scene_t1)}` })}</b>${row.congestion ? `<span class="cong cong-${esc(row.congestion)}">${tr("congestion")}: ${esc(row.congestion)}</span>` : ""}</div>
-      <div class="seg-stats"><span><b>${fmtNum(p.per_frame_median)}</b> ${tr("people")}</span><span><b>${fmtNum(mMoving)}/${fmtNum(mTotal)}</b> ${tr("machines")} ${tr("moving")}</span>${m.agv && num(m.agv.total) ? `<span><b>${fmtNum(m.agv.moving)}/${fmtNum(m.agv.total)}</b> ${tr("agv_moving")}</span><span><b>${fmtNum(m.agv.loaded)}</b> ${tr("agv_loaded")}</span>` : ""}</div>
-      ${vlm ? `<div class="seg-text"><span class="k">${ICON.spark}${tr("vlm_summary")}</span><p>${esc(vlm)}</p></div>` : ""}
-      ${row.pipeline_caption ? `<div class="seg-text old"><span class="k">${tr("pipeline_caption")}</span><p>${esc(row.pipeline_caption)}</p></div>` : ""}
-      <div class="seg-foot"><div class="chips">${(row.event_ids || []).map(refChip).join("")}</div><a class="btn sm" href="#replay/${enc(row.site_id || S.res.site)}@${num(row.scene_t0)}">${ICON.grid}${tr("open_replay")}</a></div>`;
+      <div class="seg-h"><b>${tr("seg_detail", { t: `${fmtT(row.scene_t0)}–${fmtT(row.scene_t1)}` })}</b></div>
+      <div class="seg-stats"><span><b>${fmtNum(p.per_frame_median)}</b> ${tr("people")}</span><span><b>${fmtNum(mMoving)}/${fmtNum(mTotal)}</b> ${tr("machines")} ${tr("moving")}</span>${m.agv && num(m.agv.total) ? `<span><b>${fmtNum(m.agv.moving)}/${fmtNum(m.agv.total)}</b> ${tr("agv_moving")}</span>` : ""}</div>
+      ${vlm ? `<div class="seg-text"><span class="k">${ICON.spark}${tr("basis_vlm")}</span><p>${esc(vlm)}</p></div>` : ""}`;
   }
 
   // ===================================================================== multi-camera replay
@@ -1536,51 +1505,34 @@
   }
 
   // ===================================================================== shift report
-  function renderReport(el, arg) {
+  function renderReport(el) {
     const P = S.report;
-    if (arg) { const [sid, cam] = arg.split("/"); P.site = S.idx.site[sid] ? sid : "all"; P.camera = cam || ""; }
-    const site = S.idx.site[P.site];
-    if (!site) P.site = "all";
-    const cams = site ? camOrder(site) : [];
-    if (P.camera && !cams.some((c) => c.camera === P.camera)) P.camera = "";
+    P.site = "all"; P.camera = "";
     el.innerHTML = `
       <div class="report-layout">
         <aside class="card report-ctrl">
-          <div class="card-h"><h2>${ICON.doc}${tr("report_scope")}</h2></div>
-          <label class="field"><span>${tr("site")}</span><select id="rSite"><option value="all">${tr("all_sites")}</option>${S.idx.sites.map((s) => `<option value="${esc(s.site_id)}"${s.site_id === P.site ? " selected" : ""}>${esc(s.site_id)} — ${esc(s.title || "")}</option>`).join("")}</select></label>
-          <label class="field"><span>${tr("camera")}</span><select id="rCam"${site ? "" : " disabled"}><option value="">${tr("all_cams")}</option>${cams.map((c) => `<option value="${esc(c.camera)}"${c.camera === P.camera ? " selected" : ""}>${esc(c.camera)} (${esc(viewLabel(c.view))})</option>`).join("")}</select></label>
-          <div class="report-btns"><button type="button" class="btn primary" id="rAi">${ICON.spark}${tr("gen_ai")}</button><button type="button" class="btn" id="rTpl">${ICON.bars}${tr("metrics_only")}</button></div>
+          <div class="card-h"><h2>${ICON.doc}${tr("nav_report")}</h2></div>
+          <p class="muted small">${tr("report_note")}</p>
+          <div class="report-btns"><button type="button" class="btn primary" id="rTpl">${ICON.bars}${tr("metrics_only")}</button><button type="button" class="btn" id="rAi">${ICON.spark}${tr("gen_ai_opt")}</button></div>
           <div id="rStatus" class="r-status"></div>
-          <div class="report-btns tools"><button type="button" class="btn ghost" id="rCopy">${ICON.copy}${tr("copy")}</button><button type="button" class="btn ghost" id="rDl">${ICON.download}${tr("download")}</button><button type="button" class="btn ghost" id="rPrint">${ICON.print}${tr("print")}</button></div>
+          <div class="report-btns tools"><button type="button" class="btn ghost" id="rDl">${ICON.download}${tr("download")}</button></div>
         </aside>
         <article class="card md report-doc" id="rDoc"><div class="skeleton"></div><div class="skeleton short"></div><div class="skeleton"></div></article>
       </div>`;
-    const scopeHash = () => history.replaceState(null, "", `#report/${enc(P.site)}${P.camera ? "/" + enc(P.camera) : ""}`);
-    $("#rSite", el).onchange = (ev) => { P.site = ev.target.value; P.camera = ""; scopeHash(); runCleanups(); renderReport(el, ""); };
-    $("#rCam", el).onchange = (ev) => { P.camera = ev.target.value; scopeHash(); showReports(); };
     $("#rAi", el).onclick = () => loadReport("ai");
     $("#rTpl", el).onclick = () => loadReport("template");
-    $("#rCopy", el).onclick = () => { if (P.current) navigator.clipboard?.writeText(P.current.markdown).then(() => toast(tr("copied"))).catch(() => {}); };
     $("#rDl", el).onclick = () => {
       if (!P.current) return;
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([P.current.markdown], { type: "text/markdown" }));
-      a.download = `shift-report-${P.site}${P.camera ? "-" + P.camera : ""}.md`;
+      a.download = "shift-report.md";
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     };
-    $("#rPrint", el).onclick = () => window.print();
-    showReports();
+    loadReport("template");
   }
 
   const reportKey = (mode) => [S.version, S.report.site, S.report.camera, S.lang, mode].join("|");
-
-  async function showReports() {
-    const P = S.report;
-    if (P.cache[reportKey("ai")]) { showReport(P.cache[reportKey("ai")]); return; }
-    await loadReport("template");
-    loadReport("ai");
-  }
 
   async function loadReport(mode) {
     const P = S.report, key = reportKey(mode), scope = reportKey("");
@@ -1643,25 +1595,18 @@
   async function poll() {
     try {
       const h = await api("health", { timeout: 8000 });
-      setConn(h);
       if (S.version && h.version && h.version !== S.version) {
         await loadAll();
         if (S.view === "overview") { route(); toast(tr("updated")); }
         else toast(tr("updated"), { label: tr("refresh_view"), run: route });
       }
-    } catch {
-      setConn(null);
-    }
+    } catch { /* keep the loaded snapshot */ }
   }
 
   async function boot() {
     applyStatic();
-    const clock = $("#clock");
-    const tick = () => { clock.textContent = new Date().toLocaleTimeString(S.lang === "zh" ? "zh-CN" : "en-GB", { hour12: false }); };
-    tick();
-    setInterval(tick, 1000);
     $$(".lang button").forEach((b) => {
-      b.onclick = () => { if (S.lang === b.dataset.lang) return; S.lang = b.dataset.lang; saved.set("lang", S.lang); applyStatic(); route(); };
+      b.onclick = () => { if (S.lang === b.dataset.lang) return; S.lang = b.dataset.lang; saved.set("lang", S.lang); applyStatic(); if (S.data) updateHeader(); route(); };
     });
     window.addEventListener("hashchange", route);
     route();

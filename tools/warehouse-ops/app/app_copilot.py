@@ -41,8 +41,8 @@ ASK_SYSTEM = (
 REPORT_SYSTEM = (
     "You write shift reports for Warehouse Ops Copilot. Audience: the warehouse operations manager. Be direct, "
     "specific and metrics-first. Use ONLY the facts in DATA. Every number you write must appear in DATA "
-    "(a ratio such as 0.61 may be written as 61%). Never invent counts, times or causes. Whenever you mention "
-    "an alert, flag or recommendation, include its id in backticks, e.g. `evt_123`."
+    "(a ratio such as 0.61 may be written as 61%). Never invent counts, times or causes. The data has no measure "
+    "of worker activity, so never write about idle workers, labor or staffing."
 )
 
 
@@ -261,43 +261,98 @@ def verify_numbers(narrative: str, data: str) -> tuple[int, list[str]]:
 # ---------------------------------------------------------------------- report tables
 LABELS = {
     "en": {"report": "Shift report", "all": "All sites", "scope": "Scope", "views": "camera views",
-           "min": "min of video", "segments": "segments analysed", "data": "data", "metric": "Metric",
-           "value": "Value", "key": "Key metrics", "cams": "Cameras", "alerts": "Safety alerts",
-           "flags": "Bottlenecks & surplus", "recs": "Recommended actions", "none_alerts": "No safety alerts in scope.",
-           "none_flags": "No operational flags in scope.", "none_recs": "No recommendations in scope.",
-           "people": "People visible (avg)", "agv_moving": "AGV moving (share of AGV-time)",
-           "agv_loaded": "AGV loaded (share of AGV-time)", "reaction": "Worker escape (danger · peak speed · margin to closest approach)",
+           "min": "min of recorded video", "segments": "5 s segments analysed", "metric": "Metric",
+           "value": "Value", "key": "Key metrics", "cams": "Robot fleet (w017)", "alerts": "Safety alerts",
+           "flags": "Efficiency & congestion flags", "recs": "Recommended actions", "none_alerts": "No safety alerts in scope.",
+           "none_flags": "No efficiency flags in scope.", "none_recs": "No recommendations in scope.",
+           "agv_moving": "AGV moving (share of AGV-time)",
+           "reaction": "Worker escape (danger · peak speed · margin to closest approach)",
            "v_contact": "contact", "v_forced_evasion": "forced to run", "v_short_margin": "margin too short",
            "v_close_pass": "close pass", "uncertain": "uncertain",
-           "machines": "Machines moving (share of machine-time)", "n_alerts": "Safety alerts", "n_flags": "Operational flags",
-           "camera": "Camera", "view": "View", "people_avg": "People avg", "stationary": "Machines standing still (avg)",
-           "moving": "Machines moving", "time": "Scene time", "where": "Site / camera", "type": "Type",
-           "severity": "Severity", "conf": "Confidence", "alert": "Alert", "ai_note":
-           "Narrative by the text LLM; every table is computed directly from the analyzer data.",
-           "tmpl_note": "Metrics-only report computed directly from the analyzer data.",
-           "s_summary": "Executive summary", "s_safety": "Safety", "s_prod": "Productivity & bottlenecks",
-           "s_actions": "Actions for next shift"},
+           "machines": "Machines moving (share of machine-time)", "n_alerts": "Safety alerts", "n_flags": "Efficiency flags",
+           "camera": "Camera", "view": "View", "stationary": "Machines standing still (avg)",
+           "moving": "Machines moving", "time": "Scene time", "where": "Scenario", "type": "Type",
+           "severity": "Severity", "conf": "Confidence", "verdict": "Danger", "impact": "Impact",
+           "ai_note": "Narrative by the text LLM; every table is computed directly from the analyzer data.",
+           "tmpl_note": "Report computed directly from the analyzer data (no language model).",
+           "s_summary": "Executive summary", "s_safety": "Safety", "s_prod": "Fleet efficiency",
+           "s_actions": "Actions for next shift", "limits": "Limitations",
+           "site_w017": "Warehouse 017 · robot floor", "site_run": "Forklift safety scenario · run {n}",
+           "view_floor": "floor", "view_lane": "lane",
+           "type_near_miss": "near-miss", "type_collision": "collision", "type_person_in_path": "person in path",
+           "sev_high": "high", "sev_medium": "medium", "sev_low": "low",
+           "ftype_machine_surplus": "under-used machines", "ftype_congestion": "congestion",
+           "ftype_underused_zone": "rarely used zone",
+           "limit_lines": [
+               "Offline batch analysis of {min} minutes of recorded video (3 w017 cameras × 5 min, 3 forklift runs × "
+               "10 views × 10 s); this is not a live stream.",
+               "People counts and the heatmap use YOLO's \"person\" class, which also counts humanoid robots.",
+               "Machine counts and whether a machine is moving come from Cosmos3-Reason descriptions of each 5 s segment "
+               "(model estimates).",
+               "Escape speed converts pixels to metres using the worker's box height (≈ 1.7 m), so it is approximate.",
+               "Closest approach is a VLM estimate; when views disagree by more than 1 s the margin is marked uncertain.",
+               "Only 3 forklift runs were analysed, so the safety numbers are examples, not shift statistics.",
+           ]},
     "zh": {"report": "班次报告", "all": "全部站点", "scope": "范围", "views": "个摄像头视角",
-           "min": "分钟视频", "segments": "个片段已分析", "data": "数据", "metric": "指标",
-           "value": "数值", "key": "关键指标", "cams": "摄像头", "alerts": "安全告警",
-           "flags": "瓶颈与资源冗余", "recs": "建议措施", "none_alerts": "范围内无安全告警。",
-           "none_flags": "范围内无运营标记。", "none_recs": "范围内无建议。",
-           "people": "可见人数（平均）", "agv_moving": "AGV 运行占比（按 AGV 时间）",
-           "agv_loaded": "AGV 载货占比（按 AGV 时间）", "reaction": "工人躲避（危险类型 · 逃离速度 · 距最接近时刻余量）",
+           "min": "分钟录制视频", "segments": "个 5 秒片段已分析", "metric": "指标",
+           "value": "数值", "key": "关键指标", "cams": "机器人车队（w017）", "alerts": "安全告警",
+           "flags": "效率与拥堵标记", "recs": "建议措施", "none_alerts": "范围内无安全告警。",
+           "none_flags": "范围内无效率标记。", "none_recs": "范围内无建议。",
+           "agv_moving": "AGV 运行占比（按 AGV 时间）",
+           "reaction": "工人躲避（危险类型 · 逃离速度 · 距最接近时刻余量）",
            "v_contact": "发生接触", "v_forced_evasion": "被迫奔跑躲避", "v_short_margin": "反应余量不足",
            "v_close_pass": "近距离擦过", "uncertain": "不确定",
-           "machines": "设备运行占比（按设备时间）", "n_alerts": "安全告警", "n_flags": "运营标记",
-           "camera": "摄像头", "view": "视角", "people_avg": "平均人数", "stationary": "静止设备（平均）",
-           "moving": "设备运行", "time": "场景时间", "where": "站点 / 摄像头", "type": "类型",
-           "severity": "严重度", "conf": "置信度", "alert": "告警", "ai_note":
-           "叙述由文本大模型生成；所有表格直接由分析数据计算。",
-           "tmpl_note": "纯指标报告，直接由分析数据计算。",
-           "s_summary": "执行摘要", "s_safety": "安全", "s_prod": "效率与瓶颈", "s_actions": "下一班次行动"},
+           "machines": "设备运行占比（按设备时间）", "n_alerts": "安全告警", "n_flags": "效率标记",
+           "camera": "摄像头", "view": "视角", "stationary": "静止设备（平均）",
+           "moving": "设备运行", "time": "场景时间", "where": "场景", "type": "类型",
+           "severity": "严重度", "conf": "置信度", "verdict": "危险类型", "impact": "预期效果",
+           "ai_note": "叙述由文本大模型生成；所有表格直接由分析数据计算。",
+           "tmpl_note": "报告直接由分析数据计算（未使用语言模型）。",
+           "s_summary": "执行摘要", "s_safety": "安全", "s_prod": "车队效率", "s_actions": "下一班次行动",
+           "limits": "局限性",
+           "site_w017": "w017 仓库 · 机器人作业区", "site_run": "叉车安全场景 · 第 {n} 次",
+           "view_floor": "地面", "view_lane": "通道",
+           "type_near_miss": "险情（未遂）", "type_collision": "碰撞", "type_person_in_path": "人员闯入行驶路径",
+           "sev_high": "高", "sev_medium": "中", "sev_low": "低",
+           "ftype_machine_surplus": "设备低利用", "ftype_congestion": "拥堵", "ftype_underused_zone": "区域利用不足",
+           "limit_lines": [
+               "离线批量分析：共 {min} 分钟录制视频（w017 三个摄像头各 5 分钟；3 次叉车场景，各 10 个视角 × 10 秒），不是实时视频流。",
+               "人数和热力图来自 YOLO 的「person」类，人形机器人也会被算进去。",
+               "设备数量和是否在运行来自 Cosmos3-Reason 对每个 5 秒片段的描述，属于模型估计。",
+               "逃离速度按人体框高度约 1.7 米把像素换算成米，是近似值。",
+               "最接近时刻是 VLM 的估计；各视角相差超过 1 秒时，反应余量标为「不确定」。",
+               "只分析了 3 次叉车场景，安全数字是案例，不是全班次统计。",
+           ]},
 }
+ROWS = {"en": ("far row", "middle row", "near row"), "zh": ("远排", "中排", "近排")}
+
+
+def site_name(sid: str, L: dict) -> str:
+    m = re.fullmatch(r"w3_run(\d+)", sid or "")
+    return L["site_run"].format(n=m.group(1)) if m else L.get(f"site_{sid}", sid)
+
+
+def flag_text(f: dict, L: dict, lang: str) -> str:
+    if lang != "zh":
+        return short(f.get("message"), 220)
+    m = f.get("metric") or {}
+    ratio = "ratio" in str(m.get("name"))
+    v, th = (pct(m.get("value")), pct(m.get("threshold"))) if ratio else (num(m.get("value")), num(m.get("threshold")))
+    zone = f.get("zone")
+    where = f"{ROWS['zh'][zone[1]]}第 {zone[0] + 1} 格" if isinstance(zone, list) and len(zone) >= 2 and zone[1] < 3 else ""
+    if f.get("type") == "machine_surplus":
+        n = re.search(r"([\d.]+) machines in view", f.get("message") or "")
+        return f"平均 {n.group(1) if n else '-'} 台设备在画面内，只有 {v} 在运行（阈值 {th}）"
+    if f.get("type") == "congestion":
+        return f"{where}同时最多 {v} 人（阈值 {th}）"
+    if f.get("type") == "underused_zone":
+        return f"{where}平均只有 {v} 人（阈值 {th}）"
+    return short(f.get("message"), 220)
 
 
 def report_parts(snap: Snapshot, site_id: str | None, camera: str | None, lang: str) -> dict[str, str]:
-    L = LABELS["zh" if lang == "zh" else "en"]
+    lang = "zh" if lang == "zh" else "en"
+    L = LABELS[lang]
     all_sites = not site_id or site_id == "all"
     site_ids = [str(s.get("site_id")) for s in snap.sites] if all_sites else [site_id]
 
@@ -310,26 +365,23 @@ def report_parts(snap: Snapshot, site_id: str | None, camera: str | None, lang: 
     recs = [r for r in snap.recommendations if all_sites and not camera or set(r.get("refs") or []) & ids]
     util = [c for c in snap.util_cameras if c.get("site_id") in site_ids and (not camera or c.get("camera") == camera)]
     floor = [c for c in util if snap.site_kind(c.get("site_id")) == "continuous"]
-    base = floor or util
-    agg = _cam_totals(base)
+    agg = _cam_totals(floor or util)
     segs = [s for s in snap.segments if s.get("site_id") in site_ids and (not camera or s.get("camera") == camera)]
     video_min = sum(num(s.get("duration_sec")) * (1 if camera else len(dicts(s.get("cameras"))))
                     for s in snap.sites if s.get("site_id") in site_ids) / 60
 
-    title = L["all"] if all_sites else snap.site_title(site_id)
+    title = L["all"] if all_sites else site_name(site_id, L)
     title = f"{L['report']} — {title}" + (f" · {camera}" if camera else "")
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    meta = (f"{L['scope']}: {len(util)} {L['views']} · {video_min:.1f} {L['min']} · {len(segs)} {L['segments']} · "
-            f"{L['data']}: {snap.kind} · {generated}")
+    meta = f"{L['scope']}: {len(util)} {L['views']} · {video_min:.1f} {L['min']} · {len(segs)} {L['segments']} · {generated}"
 
     sev = {s: sum(1 for e in events if e.get("severity") == s) for s in ("high", "medium", "low")}
     flag_types: dict[str, int] = {}
     for f in flags:
         flag_types[str(f.get("type"))] = flag_types.get(str(f.get("type")), 0) + 1
-    people = agg["people_sum"] if floor else agg["people_mean"]
     reactions = [e for e in events if e.get("reaction")]
     kpi = [f"| {L['metric']} | {L['value']} |", "|---|---|",
-           f"| {L['n_alerts']} | {sev['high']} high · {sev['medium']} medium · {sev['low']} low |"]
+           f"| {L['n_alerts']} | " + " · ".join(f"{L['sev_' + s]} {n}" for s, n in sev.items()) + " |"]
 
     def reaction_cell(r: dict) -> str:
         margin = "" if r.get("margin_sec") is None else (
@@ -337,55 +389,52 @@ def report_parts(snap: Snapshot, site_id: str | None, camera: str | None, lang: 
         return f"{L.get('v_' + str(r.get('verdict')), r.get('verdict'))} · {num(r.get('peak_mps'))} m/s{margin}"
 
     if reactions:
-        kpi.append(f"| {L['reaction']} | " + "; ".join(f"{e.get('site_id')} {reaction_cell(e['reaction'])}"
+        kpi.append(f"| {L['reaction']} | " + "; ".join(f"{site_name(str(e.get('site_id')), L)}: {reaction_cell(e['reaction'])}"
                                                       for e in reactions) + " |")
     if floor:
         kpi += [f"| {L['machines']} | {pct(agg['machine_moving_ratio'])} |",
-                f"| {L['agv_moving']} | {pct(agg['agv_moving_ratio'])} |",
-                f"| {L['agv_loaded']} | {pct(agg['agv_loaded_ratio'])} |"]
-    kpi += [f"| {L['people']} | {people} |",
-            f"| {L['n_flags']} | {len(flags)}" + (" (" + ", ".join(f"{k} {v}" for k, v in flag_types.items()) + ")" if flags else "") + " |"]
+                f"| {L['agv_moving']} | {pct(agg['agv_moving_ratio'])} |"]
+    kpi.append(f"| {L['n_flags']} | {len(flags)}" + (" (" + ", ".join(f"{L.get('ftype_' + k, k)} {v}" for k, v in flag_types.items())
+                                                    + ")" if flags else "") + " |")
 
-    cam_rows = [f"| {L['camera']} | {L['view']} | {L['moving']} | {L['agv_moving']} | {L['agv_loaded']} | {L['stationary']} |",
-                "|---|---|---|---|---|---|"]
-    by_site: dict[str, list[dict]] = {}
-    for c in util:
-        by_site.setdefault(str(c.get("site_id")), []).append(c)
-    for sid, cams in by_site.items():
-        if camera or snap.site_kind(sid) == "continuous":
-            for c in cams:
-                t, agv = c.get("totals") or {}, _fleet_type(c, "agv")
-                stationary = sum(num(d.get("stationary_avg")) for d in ((c.get("fleet") or {}).get("types") or {}).values())
-                cam_rows.append(f"| {sid}/{c.get('camera')} | {c.get('view')} | {pct(t.get('machine_moving_ratio'))} | "
-                                f"{pct(agv.get('moving_ratio'))} | {pct(agv.get('loaded_ratio'))} | {round(stationary, 2)} |")
+    cam_rows = [f"| {L['camera']} | {L['view']} | {L['moving']} | {L['agv_moving']} | {L['stationary']} |",
+                "|---|---|---|---|---|"]
+    for c in floor:
+        t, agv = c.get("totals") or {}, _fleet_type(c, "agv")
+        stationary = sum(num(d.get("stationary_avg")) for d in ((c.get("fleet") or {}).get("types") or {}).values())
+        cam_rows.append(f"| {c.get('camera')} | {L.get('view_' + str(c.get('view')), c.get('view'))} | "
+                        f"{pct(t.get('machine_moving_ratio'))} | {pct(agv.get('moving_ratio'))} | {round(stationary, 2)} |")
 
-    alert_rows = [f"| {L['time']} | {L['where']} | {L['type']} | {L['severity']} | {L['conf']} | {L['alert']} |",
+    alert_rows = [f"| {L['time']} | {L['where']} | {L['type']} | {L['severity']} | {L['conf']} | {L['verdict']} |",
                   "|---|---|---|---|---|---|"]
-    alert_rows += [f"| {fmt_t(e.get('scene_t'))} | {e.get('site_id')}/{e.get('camera')} | {e.get('type')} | "
-                   f"{e.get('severity')} | {num(e.get('confidence')):.2f} | {cell(e.get('title'))} `{e.get('event_id')}` |"
+    alert_rows += [f"| {fmt_t(e.get('scene_t'))} | {site_name(str(e.get('site_id')), L)} · {e.get('camera')} | "
+                   f"{L.get('type_' + str(e.get('type')), e.get('type'))} | {L.get('sev_' + str(e.get('severity')), e.get('severity'))} | "
+                   f"{pct(e.get('confidence'))} | {L.get('v_' + str((e.get('reaction') or {}).get('verdict')), '-')} |"
                    for e in events]
-    flag_items = [f"- **{f.get('type')}** · {f.get('site_id')}/{f.get('camera')}"
-                  + (f" zone ({f['zone'][0]},{f['zone'][1]})" if isinstance(f.get("zone"), list) and len(f["zone"]) >= 2 else "")
-                  + f" · {fmt_t(f.get('scene_t0'))}–{fmt_t(f.get('scene_t1'))} — {(f.get('metric') or {}).get('name')} "
-                  f"{(f.get('metric') or {}).get('value')} vs threshold {(f.get('metric') or {}).get('threshold')}: "
-                  f"{short(f.get('message'), 220)} `{f.get('flag_id')}`" for f in flags]
-    rec_items = [f"{i}. **{short(r.get('title'), 140)}** — {short(r.get('action'), 260)}"
-                 + (f" _Impact: {short(r.get('expected_impact'), 140)}_" if r.get("expected_impact") else "")
-                 + f" `{r.get('rec_id')}`" for i, r in enumerate(recs, 1)]
+    flag_items = [f"- **{L.get('ftype_' + str(f.get('type')), f.get('type'))}** · {f.get('camera')} · "
+                  f"{fmt_t(f.get('scene_t0'))}–{fmt_t(f.get('scene_t1'))} — {flag_text(f, L, lang)}" for f in flags]
+    zh = lang == "zh"
+    rec_items = [f"{i}. **{short(r.get('title_zh') if zh and r.get('title_zh') else r.get('title'), 140)}** — "
+                 f"{short(r.get('action_zh') if zh and r.get('action_zh') else r.get('action'), 260)}"
+                 + (f" _{L['impact']}: {short(r.get('impact_zh') if zh and r.get('impact_zh') else r.get('expected_impact'), 140)}_"
+                    if r.get("expected_impact") else "") for i, r in enumerate(recs, 1)]
+    limits = [f"- {line.format(min=f'{video_min:.0f}')}" for line in L["limit_lines"]]
     return {
         "title": title, "meta": meta, "L": L,
-        "kpi": "\n".join(kpi), "cameras": "\n".join(cam_rows),
+        "kpi": "\n".join(kpi), "cameras": "\n".join(cam_rows) if floor else "",
         "alerts": "\n".join(alert_rows) if events else L["none_alerts"],
         "flags": "\n".join(flag_items) if flags else L["none_flags"],
         "recs": "\n".join(rec_items) if recs else L["none_recs"],
+        "limits": "\n".join(limits),
     }
 
 
 def _tables(p: dict, with_recs: bool) -> str:
     L = p["L"]
-    out = (f"## {L['key']}\n{p['kpi']}\n\n## {L['cams']}\n{p['cameras']}\n\n## {L['alerts']}\n{p['alerts']}\n\n"
-           f"## {L['flags']}\n{p['flags']}\n")
-    return out + (f"\n## {L['recs']}\n{p['recs']}\n" if with_recs else "")
+    out = f"## {L['key']}\n{p['kpi']}\n\n" + (f"## {L['cams']}\n{p['cameras']}\n\n" if p["cameras"] else "")
+    out += f"## {L['alerts']}\n{p['alerts']}\n\n## {L['flags']}\n{p['flags']}\n"
+    out += f"\n## {L['recs']}\n{p['recs']}\n" if with_recs else ""
+    return out + f"\n## {L['limits']}\n{p['limits']}\n"
 
 
 def template_report(p: dict) -> str:
@@ -506,9 +555,9 @@ class Copilot:
         prompt = (f"DATA for {p['title']}:\n{data}\n\nWrite exactly these Markdown sections and nothing else:\n"
                   f"## {L['s_summary']}\n3-5 bullets, most important first.\n"
                   f"## {L['s_safety']}\n2-4 bullets (write '{L['none_alerts']}' if there are none).\n"
-                  f"## {L['s_prod']}\n2-4 bullets on fleet efficiency: AGV/AMR/humanoid moving and loaded shares, "
+                  f"## {L['s_prod']}\n2-4 bullets on fleet efficiency: AGV/AMR/humanoid moving shares, "
                   f"machines standing still, congestion and underused zones.\n"
-                  f"## {L['s_actions']}\n3-5 numbered actions, each tied to an id.\n"
+                  f"## {L['s_actions']}\n3-5 numbered actions, each tied to a specific alert or flag in DATA.\n"
                   f"No tables, no title. {lang_line}")
         narrative = self._chat(REPORT_SYSTEM, prompt, 3000)
         if not narrative:
@@ -523,7 +572,7 @@ class Copilot:
         lang = "zh" if lang == "zh" else "en"
         site_id = None if site_id in (None, "", "all") else site_id
         if mode == "template" or not self._llm_ready():
-            return self._fallback_report(snap, site_id, camera, lang, mode)
+            return self._fallback_report(snap, site_id, camera, lang)
         key = (snap.version, site_id or "all", camera or "", lang)
         with self._lock:
             hit = self._reports.get(key)
@@ -538,7 +587,7 @@ class Copilot:
             result = fut.result(timeout=timeout)
         except FutureTimeout:
             result = None
-        return {**result, "cached": False} if result else self._fallback_report(snap, site_id, camera, lang, mode)
+        return {**result, "cached": False} if result else self._fallback_report(snap, site_id, camera, lang)
 
     def _report_done(self, key: tuple, fut: Future) -> None:
         with self._lock:
@@ -552,9 +601,7 @@ class Copilot:
                 self._reports = {k: v for k, v in self._reports.items() if k[0] == key[0]}
                 self._reports[key] = result
 
-    def _fallback_report(self, snap: Snapshot, site_id: str | None, camera: str | None, lang: str, mode: str) -> dict:
-        if mode != "template" and not site_id and not camera and snap.shift_report_md:
-            return {"markdown": snap.shift_report_md, "engine": "analyzer", "cached": False}
+    def _fallback_report(self, snap: Snapshot, site_id: str | None, camera: str | None, lang: str) -> dict:
         return {"markdown": template_report(report_parts(snap, site_id, camera, lang)), "engine": "template",
                 "cached": False}
 
