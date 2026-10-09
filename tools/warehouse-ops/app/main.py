@@ -8,6 +8,7 @@ Run: python main.py   (listens on 0.0.0.0:$PORT, default 8080)
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import threading
@@ -43,6 +44,8 @@ LIVE_REFRESH_SEC = 600
 DATA_SETTLE_SEC = 30
 PREFETCH_CLIPS = int(os.environ.get("PREFETCH_CLIPS", "24"))
 PASS_HEADERS = ("Content-Range", "Content-Length", "Accept-Ranges")
+AGENT_STATUS = os.environ.get("AGENT_STATUS") or os.path.join(APP_DIR, "..", ".cache", "agent_status.json")
+AGENT_LOG_LINES = 8
 
 store = app_data.DataStore()
 clients = Clients()
@@ -156,6 +159,19 @@ def styles_css() -> FileResponse:
     return _static("styles.css", "text/css; charset=utf-8")
 
 
+def agent_status() -> dict | None:
+    """The watcher's status file (analyzer/watch.py), when it runs next to this app."""
+    try:
+        with open(AGENT_STATUS, encoding="utf-8") as f:
+            status = json.load(f)
+        age = time.time() - os.path.getmtime(AGENT_STATUS)
+    except (OSError, ValueError):
+        return None
+    status["online"] = age <= 2 * float(status.get("interval_sec") or 30) + 30
+    status["log"] = (status.get("log") or [])[:AGENT_LOG_LINES]
+    return status
+
+
 @app.get("/health")
 def health() -> dict:
     snap = store.snapshot()
@@ -164,7 +180,7 @@ def health() -> dict:
             "llm": {"available": bool(getattr(clients.llm, "available", True)),
                     "kind": type(clients.llm).__name__,
                     "model": getattr(clients.llm, "_model", None) or ""},
-            "clip_cache": clips.status()}
+            "clip_cache": clips.status(), "agent": agent_status()}
 
 
 @app.get("/api/overview")

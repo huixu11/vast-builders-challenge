@@ -11,6 +11,8 @@ CAPTION_CHARS = 300
 
 _W017 = re.compile(r"_Warehouse_(\d+)_(Camera(?:_\d+)?)_chunk_(\d+)\.mp4$")
 _W3 = re.compile(r"_run_(\d+)_seed_\d+\.(ceiling|eye)_(\d+)\.rgb_chunk_(\d+)\.mp4$")
+_UPLOAD = re.compile(r"^\d{8}_(\d{6})_[0-9a-f]+_chunk_(\d+)\.mp4$")
+_CAMERA_ID = re.compile(r"^(ceiling|eye)_\d+$")
 LANE_CAMERAS = {("w017", "Camera_01")}
 
 
@@ -42,7 +44,7 @@ class Segment:
         return self.location == "warehouse3"
 
 
-def parse_name(location: str, filename: str) -> dict | None:
+def parse_name(location: str, filename: str, camera_id: str = "") -> dict | None:
     if location == "indoor":
         m = _W017.search(filename)
         if m:
@@ -54,18 +56,25 @@ def parse_name(location: str, filename: str) -> dict | None:
         if m:
             return {"site_id": f"w3_run{m.group(1)}", "camera": f"{m.group(2)}_{m.group(3)}",
                     "chunk_index": int(m.group(4)), "view": m.group(2)}
+        m, cam = _UPLOAD.match(filename), _CAMERA_ID.match(camera_id or "")
+        if m and cam:  # /videos/upload renames the file, so the camera comes from the upload metadata
+            return {"site_id": f"w3_live{m.group(1)}", "camera": cam.group(0), "chunk_index": int(m.group(2)),
+                    "view": cam.group(1)}
     return None
 
 
 def site_sort_key(site_id: str) -> tuple:
-    m = re.match(r"w3_run(\d+)$", site_id)
-    return (1, int(m.group(1)), "") if m else (0, 0, site_id)
+    m = re.match(r"w3_(run|live)(\d+)$", site_id)
+    return (1 if m.group(1) == "run" else 2, int(m.group(2)), "") if m else (0, 0, site_id)
 
 
 def site_meta(site_id: str) -> dict:
     m = re.match(r"w3_run(\d+)$", site_id)
     if m:
         return {"title": f"Forklift safety scenario, run {m.group(1)}", "kind": "scenario"}
+    m = re.match(r"w3_live(\d\d)(\d\d)(\d\d)$", site_id)
+    if m:
+        return {"title": f"Live camera upload, {m.group(1)}:{m.group(2)}:{m.group(3)} UTC", "kind": "scenario"}
     return {"title": f"Warehouse {site_id[1:]} robot-assisted floor", "kind": "continuous"}
 
 
@@ -87,7 +96,7 @@ def load_segments(sites: set[str] | None = None) -> list[Segment]:
     segs: dict[str, Segment] = {}
     for location in LOCATIONS:
         for ch in explore(location):
-            meta = parse_name(location, ch.get("filename", ""))
+            meta = parse_name(location, ch.get("filename", ""), ch.get("camera_id") or "")
             if meta is None:
                 log(f"skipping unrecognized chunk name: {ch.get('filename')}")
                 continue

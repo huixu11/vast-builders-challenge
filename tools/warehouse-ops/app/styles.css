@@ -243,6 +243,24 @@ select:focus, input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgb
 .scn-meta { color: var(--dim); font-size: 11.5px; }
 .scn-events { display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; }
 .card-links { display: inline-flex; gap: 14px; }
+.pill.conn.busy { color: var(--amber); border-color: rgba(251, 191, 36, .4); }
+.pill.conn.busy i { background: var(--amber); animation: pulse .9s infinite; }
+.agent-card { border-color: rgba(34, 211, 238, .3); }
+.agent-card.ag-st-analyzing { border-color: rgba(251, 191, 36, .55); box-shadow: 0 0 22px rgba(251, 191, 36, .1); }
+.agent-card.ag-st-offline { border-color: var(--line); opacity: .8; }
+.agent-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 1.6s infinite; }
+.ag-st-analyzing .agent-dot { background: var(--amber); box-shadow: 0 0 10px var(--amber); animation-duration: .8s; }
+.ag-st-offline .agent-dot, .ag-st-error .agent-dot { background: var(--dim); box-shadow: none; animation: none; }
+.ag-indexing { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--amber); font-size: 12px; }
+.ag-indexing .spinner { width: 14px; height: 14px; border-width: 2px; flex: none; }
+.agent-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 230px; overflow: auto; }
+.agent-log li { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 8px; font-size: 12px; line-height: 1.4; color: #c9d4e2; }
+.agent-log li .mono { color: var(--dim); font-size: 11px; padding-top: 1px; }
+.agent-log .ag-msg { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.agent-log .ag-alert { color: #ff8da1; font-weight: 600; }
+.agent-log .ag-done { color: var(--green); }
+.agent-log .ag-detected, .agent-log .ag-analyzing { color: var(--amber); }
+.agent-log .ag-error { color: var(--dim); }
 .roi { margin-bottom: 14px; }
 .roi-body { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 14px; align-items: start; }
 .roi-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }

@@ -24,6 +24,10 @@
       lib_open_res: "Resources & bottlenecks", lib_open_replay: "Multi-camera replay", lib_ask: "Ask about this video",
       lib_ask_q: "What happens on {cam} at {site} between {t0} and {t1}? Any safety or efficiency issues?",
       lib_empty: "No videos match this filter.", close: "Close",
+      agent: "Agent", agent_title: "Video agent", agent_watching: "Watching {n} indexed videos · scan every {s} s",
+      agent_starting: "Starting…", agent_analyzing: "Analyzing new footage at {sites}…", agent_error: "VSS scan failed · retrying",
+      agent_offline: "Not running · last activity shown", agent_indexing: "{k} new video(s) still being indexed by VSS…",
+      agent_idle: "No activity yet.",
       roi_title: "Impact estimate · idle cost per shift", roi_scope: "Main floor · {c} cameras · {m} min of video per camera, extrapolated to a {h} h shift",
       roi_labor: "Idle labor", roi_labor_sub: "{p} people idle on average → {h} person-hours",
       roi_machine: "Idle machines", roi_machine_sub: "{m} machines stationary on average → {h} machine-hours",
@@ -109,6 +113,10 @@
       lib_open_res: "资源与瓶颈", lib_open_replay: "多机位回放", lib_ask: "就此视频提问",
       lib_ask_q: "{site} 的 {cam} 在 {t0}–{t1} 之间发生了什么？有没有安全或效率问题？",
       lib_empty: "没有符合筛选条件的视频。", close: "关闭",
+      agent: "智能体", agent_title: "视频智能体", agent_watching: "正在监视 {n} 个已索引视频 · 每 {s} 秒扫描",
+      agent_starting: "启动中…", agent_analyzing: "正在分析 {sites} 的新视频…", agent_error: "VSS 扫描失败 · 重试中",
+      agent_offline: "未运行 · 显示最近一次活动", agent_indexing: "{k} 个新视频仍在被 VSS 索引…",
+      agent_idle: "暂无活动。",
       roi_title: "影响估算 · 每班空闲成本", roi_scope: "主仓库 · {c} 个机位 · 每个机位 {m} 分钟视频，外推到 {h} 小时班次",
       roi_labor: "人员空闲", roi_labor_sub: "平均 {p} 人空闲 → {h} 人时",
       roi_machine: "设备闲置", roi_machine_sub: "平均 {m} 台设备静止 → {h} 机时",
@@ -397,6 +405,37 @@
     const llmOk = !!(h?.llm?.available || h?.cosmos);
     c.classList.toggle("ok", llmOk); c.classList.toggle("bad", !llmOk);
     c.title = llmOk ? (h?.llm?.model || h?.llm?.kind || "text LLM available") : "Language model unavailable — fallbacks active";
+    S.agent = h?.agent || null;
+    updateAgent();
+  }
+
+  const agentState = (a) => (!a ? "none" : !a.online ? "offline" : a.status || "watching");
+  const clockTime = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString(S.lang === "zh" ? "zh-CN" : "en-GB", { hour12: false }); };
+  const agentHead = (a) => tr("agent_" + agentState(a), { n: fmtNum(a.videos_indexed ?? 0), s: a.interval_sec || 30, sites: (a.analyzing || []).join(", ") });
+
+  function agentCard() {
+    const a = S.agent;
+    if (!a) return "";
+    const items = (a.log || []).map((l) => `<li class="ag-${esc(l.kind)}"><span class="mono">${esc(clockTime(l.t))}</span>
+      <span class="ag-msg">${esc(l.message)}${(l.refs || []).slice(0, 3).map((id) => idChip(id) || "").join("")}</span></li>`).join("");
+    const indexing = (a.indexing || []).length;
+    return `<div class="card agent-card ag-st-${agentState(a)}">
+      <div class="card-h"><h2><span class="agent-dot"></span>${tr("agent_title")}</h2><span class="muted small">${esc(agentHead(a))}</span></div>
+      ${indexing ? `<div class="ag-indexing"><span class="spinner"></span>${tr("agent_indexing", { k: indexing })}</div>` : ""}
+      <ul class="agent-log">${items || `<li class="muted">${tr("agent_idle")}</li>`}</ul></div>`;
+  }
+
+  function updateAgent() {
+    const a = S.agent, st = agentState(a), pill = $("#agentPill");
+    pill.hidden = !a;
+    if (a) {
+      pill.classList.toggle("ok", st === "watching");
+      pill.classList.toggle("busy", st === "analyzing" || st === "starting");
+      pill.classList.toggle("bad", st === "offline" || st === "error");
+      pill.title = agentHead(a);
+    }
+    const slot = $("#agentSlot");
+    if (slot) slot.innerHTML = agentCard();
   }
 
   function applyStatic() {
@@ -898,6 +937,7 @@
           <div class="cam-grid">${floorCams.map(camCard).join("")}${scenarios.map(scenarioCard).join("")}</div>
         </div>
         <div class="ov-side">
+          <div id="agentSlot">${agentCard()}</div>
           <div class="card feed-card">
             <div class="card-h"><h2><span class="live-dot"></span>${tr("alert_feed")}</h2><a class="link" href="#alerts">${tr("view_all")} →</a></div>
             <div class="feed">${S.data.events.slice(0, 8).map(feedItem).join("") || emptyState(ICON.shield, tr("alerts_none"))}</div>
@@ -1842,8 +1882,11 @@
       return;
     }
     route();
-    poll();
-    setInterval(poll, 15000);
+    const loop = async () => {
+      await poll();
+      setTimeout(loop, S.agent?.online ? 5000 : 15000);
+    };
+    loop();
   }
 
   boot();
