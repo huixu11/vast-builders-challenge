@@ -413,25 +413,49 @@ def w017_events(cands: list[dict], controls: list[dict], checks: dict[str, dict]
 
 
 # ------------------------------------------------------------------------------------------------- reaction
-LATE_REACTION_SEC = 1.0
+SHORT_MARGIN_SEC = 1.0
+FORCED_RUN_MPS = 1.5
+CLOSEST_SPREAD_MAX_SEC = 1.0
+DANGER_SEPARATIONS = ("contact", "<1m", "1-2m")
 
 
 def reaction(event: dict) -> dict | None:
-    """Worker reaction from stored evidence: when the worker started moving (median standstill end over ceiling
-    views), when they broke into an evasive move, peak escape speed, and the margin to the VLM's closest approach."""
+    """Worker reaction from stored evidence. Every event here is already a confirmed hazard, so the verdict says
+    why it was dangerous, never that it was safe:
+      contact        - VLM saw contact or the event is a collision
+      forced_evasion - the worker had to run (median ceiling peak speed >= FORCED_RUN_MPS)
+      short_margin   - started moving < SHORT_MARGIN_SEC before closest approach (only when that time is reliable)
+      close_pass     - forklift passed within 2 m
+    closest_t is the median per-view VLM estimate (coarse); margin_sec is only trusted when the agreeing ceiling
+    views put closest approach within CLOSEST_SPREAD_MAX_SEC of each other."""
     ev = event.get("evidence") or {}
-    kin, cons = ev.get("kinematics") or {}, ev.get("consensus") or {}
+    kin, cons, vlm = ev.get("kinematics") or {}, ev.get("consensus") or {}, ev.get("vlm") or {}
     views = [v for v in kin.get("per_view") or [] if str(v.get("camera", "")).startswith("ceiling") and "evasive_t" in v]
     if not views:
         return None
     onset = cons.get("t_onset")
     evade = _median([v["evasive_t"] for v in views])
+    peak = _median([v.get("peak_mps") for v in views])
     closest = cons.get("t_vlm")
+    labels = COMPATIBLE.get(event.get("type"), (event.get("type"),))
+    vlm_ts = [t for v in event.get("views") or [] if str(v.get("camera", "")).startswith("ceiling")
+              and v.get("label") in labels and (t := v.get("vlm_t")) is not None]
+    spread = round(max(vlm_ts) - min(vlm_ts), 2) if vlm_ts else None
+    reliable = closest is not None and len(vlm_ts) >= 2 and spread <= CLOSEST_SPREAD_MAX_SEC
     start = onset if onset is not None else evade
     margin = round(closest - start, 2) if closest is not None else None
-    return {"onset_t": onset, "evade_t": evade, "peak_mps": _median([v.get("peak_mps") for v in views]),
-            "closest_t": closest, "margin_sec": margin, "late": margin is not None and margin < LATE_REACTION_SEC,
-            "views": len(views)}
+    sep = vlm.get("min_separation")
+    hidden = sum(1 for v in kin.get("per_view") or [] if str(v.get("camera", "")).startswith("ceiling") and v.get("hidden"))
+    danger = [k for k, hit in (
+        ("contact", event.get("type") == "collision" or sep == "contact"),
+        ("forced_evasion", peak is not None and peak >= FORCED_RUN_MPS),
+        ("short_margin", reliable and margin is not None and margin < SHORT_MARGIN_SEC),
+        ("close_pass", sep in DANGER_SEPARATIONS),
+    ) if hit]
+    return {"onset_t": onset, "evade_t": evade, "peak_mps": peak, "closest_t": closest,
+            "closest_spread_sec": spread, "margin_sec": margin, "margin_reliable": reliable,
+            "min_separation": sep, "hidden_views": hidden, "danger": danger,
+            "verdict": danger[0] if danger else "close_pass", "views": len(views)}
 
 
 # --------------------------------------------------------------------------------------------------- driver

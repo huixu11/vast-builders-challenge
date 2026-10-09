@@ -173,7 +173,8 @@ def print_summary(args, started, segs, events, util, recs, runner, sizes, calibr
     for e in events:
         if e.get("reaction"):
             r = e["reaction"]
-            print(f"  reaction {e['site_id']:<9} margin {r['margin_sec']} s, peak {r['peak_mps']} m/s")
+            print(f"  reaction {e['site_id']:<9} {r['verdict']}, peak {r['peak_mps']} m/s, onset t={r['onset_t']} s, "
+                  f"margin {r['margin_sec']} s ({'reliable' if r['margin_reliable'] else 'VLM spread ' + str(r['closest_spread_sec']) + ' s'})")
     print(f"\nflags ({len(util['flags'])}): {dict(Counter(f['type'] for f in util['flags']))}")
     for f in util["flags"]:
         print(f"  {f['type']:<15} {f['message']}")

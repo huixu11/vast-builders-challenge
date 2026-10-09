@@ -24,7 +24,10 @@ SMALL_INTS = set(range(13))
 MAX_UNGROUNDED_SHARE = 0.1
 MIN_SUMMARY_CHARS = 80
 TOTAL_KEYS = ("people_avg", "machine_moving_ratio")
-REACTION_KEYS = ("onset_t", "evade_t", "peak_mps", "closest_t", "margin_sec")
+REACTION_KEYS = ("onset_t", "evade_t", "peak_mps", "closest_t", "closest_spread_sec", "margin_sec", "margin_reliable",
+                 "min_separation", "danger", "verdict")
+VERDICT_TEXT = {"contact": "contact with the worker", "forced_evasion": "worker was forced to run clear",
+                "short_margin": "too little reaction margin", "close_pass": "forklift passed within 2 m"}
 
 
 def _fleet(c: dict) -> dict:
@@ -53,11 +56,14 @@ def compact_payload(util: dict, events: list[dict]) -> dict:
 def reaction_text(r: dict | None) -> str:
     if not r:
         return ""
-    parts = []
-    if r.get("margin_sec") is not None:
-        parts.append(f"worker started moving {r['margin_sec']:.1f} s before the closest approach")
+    parts = [VERDICT_TEXT.get(r.get("verdict"), "dangerous pass")]
     if r.get("peak_mps") is not None:
         parts.append(f"peak escape speed {r['peak_mps']:.1f} m/s")
+    if r.get("onset_t") is not None:
+        parts.append(f"worker started moving at t={r['onset_t']:.1f} s")
+    if r.get("margin_sec") is not None:
+        parts.append(f"{r['margin_sec']:.1f} s before the closest approach" if r.get("margin_reliable") else
+                     f"closest-approach time uncertain (VLM views disagree by {r.get('closest_spread_sec') or 0:.1f} s)")
     return "; ".join(parts)
 
 

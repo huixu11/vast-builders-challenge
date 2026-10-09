@@ -28,6 +28,8 @@ SEARCH_TIMEOUT = 25
 ASK_LLM_TIMEOUT = 90
 REPORT_LLM_TIMEOUT = 120
 AGENT_TIMEOUT = 25
+VERDICT_TEXT = {"contact": "contact with the worker", "forced_evasion": "worker was forced to run clear",
+                "short_margin": "too little reaction margin", "close_pass": "forklift passed within 2 m"}
 
 ASK_SYSTEM = (
     "You are Warehouse Ops Copilot, a safety and operations analyst for a warehouse video-analytics system. "
@@ -118,11 +120,14 @@ def _fleet_text(cam: dict) -> str:
 def reaction_text(r: dict | None) -> str:
     if not r:
         return ""
-    parts = []
-    if r.get("margin_sec") is not None:
-        parts.append(f"worker started moving {num(r['margin_sec'])} s before the closest approach")
+    parts = [VERDICT_TEXT.get(str(r.get("verdict")), "dangerous pass")]
     if r.get("peak_mps") is not None:
         parts.append(f"peak escape speed {num(r['peak_mps'])} m/s")
+    if r.get("onset_t") is not None:
+        parts.append(f"worker started moving at t={num(r['onset_t'])} s")
+    if r.get("margin_sec") is not None:
+        parts.append(f"{num(r['margin_sec'])} s before the closest approach" if r.get("margin_reliable") else
+                     f"closest-approach time uncertain (VLM views disagree by {num(r.get('closest_spread_sec'))} s)")
     return "; ".join(parts)
 
 
@@ -261,7 +266,9 @@ LABELS = {
            "flags": "Bottlenecks & surplus", "recs": "Recommended actions", "none_alerts": "No safety alerts in scope.",
            "none_flags": "No operational flags in scope.", "none_recs": "No recommendations in scope.",
            "people": "People visible (avg)", "agv_moving": "AGV moving (share of AGV-time)",
-           "agv_loaded": "AGV loaded (share of AGV-time)", "reaction": "Worker reaction before closest approach",
+           "agv_loaded": "AGV loaded (share of AGV-time)", "reaction": "Worker escape (danger · peak speed · margin to closest approach)",
+           "v_contact": "contact", "v_forced_evasion": "forced to run", "v_short_margin": "margin too short",
+           "v_close_pass": "close pass", "uncertain": "uncertain",
            "machines": "Machines moving (share of machine-time)", "n_alerts": "Safety alerts", "n_flags": "Operational flags",
            "camera": "Camera", "view": "View", "people_avg": "People avg", "stationary": "Machines standing still (avg)",
            "moving": "Machines moving", "time": "Scene time", "where": "Site / camera", "type": "Type",
@@ -276,7 +283,9 @@ LABELS = {
            "flags": "瓶颈与资源冗余", "recs": "建议措施", "none_alerts": "范围内无安全告警。",
            "none_flags": "范围内无运营标记。", "none_recs": "范围内无建议。",
            "people": "可见人数（平均）", "agv_moving": "AGV 运行占比（按 AGV 时间）",
-           "agv_loaded": "AGV 载货占比（按 AGV 时间）", "reaction": "工人在最接近前开始躲避的时间",
+           "agv_loaded": "AGV 载货占比（按 AGV 时间）", "reaction": "工人躲避（危险类型 · 逃离速度 · 距最接近时刻余量）",
+           "v_contact": "发生接触", "v_forced_evasion": "被迫奔跑躲避", "v_short_margin": "反应余量不足",
+           "v_close_pass": "近距离擦过", "uncertain": "不确定",
            "machines": "设备运行占比（按设备时间）", "n_alerts": "安全告警", "n_flags": "运营标记",
            "camera": "摄像头", "view": "视角", "people_avg": "平均人数", "stationary": "静止设备（平均）",
            "moving": "设备运行", "time": "场景时间", "where": "站点 / 摄像头", "type": "类型",
@@ -318,11 +327,17 @@ def report_parts(snap: Snapshot, site_id: str | None, camera: str | None, lang: 
     for f in flags:
         flag_types[str(f.get("type"))] = flag_types.get(str(f.get("type")), 0) + 1
     people = agg["people_sum"] if floor else agg["people_mean"]
-    reactions = [e for e in events if (e.get("reaction") or {}).get("margin_sec") is not None]
+    reactions = [e for e in events if e.get("reaction")]
     kpi = [f"| {L['metric']} | {L['value']} |", "|---|---|",
            f"| {L['n_alerts']} | {sev['high']} high · {sev['medium']} medium · {sev['low']} low |"]
+
+    def reaction_cell(r: dict) -> str:
+        margin = "" if r.get("margin_sec") is None else (
+            f" · {num(r['margin_sec'])} s" if r.get("margin_reliable") else f" · ≈{num(r['margin_sec'])} s ({L['uncertain']})")
+        return f"{L.get('v_' + str(r.get('verdict')), r.get('verdict'))} · {num(r.get('peak_mps'))} m/s{margin}"
+
     if reactions:
-        kpi.append(f"| {L['reaction']} | " + ", ".join(f"{e.get('site_id')} {num(e['reaction']['margin_sec'])} s"
+        kpi.append(f"| {L['reaction']} | " + "; ".join(f"{e.get('site_id')} {reaction_cell(e['reaction'])}"
                                                       for e in reactions) + " |")
     if floor:
         kpi += [f"| {L['machines']} | {pct(agg['machine_moving_ratio'])} |",

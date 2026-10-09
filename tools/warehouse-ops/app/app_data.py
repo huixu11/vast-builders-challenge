@@ -319,8 +319,8 @@ def overview(snap: Snapshot) -> dict:
     agv = [((c.get("fleet") or {}).get("types") or {}).get("agv") or {} for c in floor_util]
     agv_total = sum(num(a.get("avg")) for a in agv)
     safety = safety_cards(snap)
-    margins = [num(c["reaction"]["margin_sec"]) for c in safety
-               if c.get("reaction") and c["reaction"].get("margin_sec") is not None]
+    reactions = [c["reaction"] for c in safety if c.get("reaction")]
+    margins = [num(r["margin_sec"]) for r in reactions if r.get("margin_reliable") and r.get("margin_sec") is not None]
     peaks = [num(c["reaction"]["peak_mps"]) for c in safety if c.get("reaction") and c["reaction"].get("peak_mps")]
     m_total = sum(num(p.get("machines_total")) for c in floor_util for p in dicts(c.get("series")))
     m_moving = sum(num(p.get("machines_moving")) for c in floor_util for p in dicts(c.get("series")))
@@ -341,7 +341,8 @@ def overview(snap: Snapshot) -> dict:
             "people_avg": round(sum(c["people_avg"] for c in floor), 1),
             "now_scene_t": now_t,
             "reaction_min_margin": min(margins) if margins else None,
-            "reaction_late": sum(1 for c in safety if (c.get("reaction") or {}).get("late")),
+            "reaction_forced": sum(1 for r in reactions if "forced_evasion" in (r.get("danger") or [])),
+            "reaction_short_margin": sum(1 for r in reactions if "short_margin" in (r.get("danger") or [])),
             "reaction_peak_max": max(peaks) if peaks else None,
             "safety_runs": len(safety),
             "agv_moving_ratio": round(sum(num(a.get("avg")) * num(a.get("moving_ratio")) for a in agv) / agv_total, 3)

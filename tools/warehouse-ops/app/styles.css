@@ -256,10 +256,15 @@ select:focus, input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgb
 .task-spark { display: flex; flex-direction: column; gap: 2px; }
 .task-foot { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 4px; font-size: 12px; }
 .r-tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
-.r-tag.late { color: var(--red); background: rgba(244, 63, 94, .12); border: 1px solid rgba(244, 63, 94, .35); }
-.r-tag.ok { color: var(--green); background: rgba(52, 211, 153, .1); border: 1px solid rgba(52, 211, 153, .3); }
+.r-tag svg { width: 12px; height: 12px; margin-right: 4px; flex: none; }
+.r-tag.red { color: var(--red); background: rgba(244, 63, 94, .12); border: 1px solid rgba(244, 63, 94, .35); }
+.r-tag.amber { color: var(--amber); background: rgba(251, 191, 36, .1); border: 1px solid rgba(251, 191, 36, .35); }
+.r-tags { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.r-tags.col { flex-direction: column; align-items: flex-start; gap: 4px; }
+.tm b.muted { color: var(--muted); }
 .reaction-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: center; gap: 10px; margin: 10px 0 4px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg2); }
-.reaction-strip.late { border-color: rgba(244, 63, 94, .35); }
+.reaction-strip.red { border-color: rgba(244, 63, 94, .35); }
+.reaction-strip.amber { border-color: rgba(251, 191, 36, .35); }
 .rec-strip { margin-top: 4px; }
 .rec-items.row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 

@@ -14,11 +14,13 @@
       kpi_people: "People on floor now", kpi_people_sub: "avg {avg} · {n} floor cameras · window ending {t}",
       sec_safety: "Safety", sec_safety_sub: "Forklift–worker close calls · multi-view VLM verdict + motion tracking",
       sec_eff: "Efficiency", sec_eff_sub: "Robot fleet on the w017 floor · AGV / AMR / humanoid utilization",
-      kpi_reaction: "Shortest reaction margin", kpi_reaction_sub: "worker started moving before closest approach · {n} of {m} runs under 1 s",
+      kpi_reaction: "Forced escapes", kpi_reaction_sub: "runs where the worker had to run clear · peak {p} m/s · {s} with margin under 1 s",
       kpi_fleet: "Fleet moving", kpi_fleet_sub: "share of machine-time in motion · {n} floor cameras",
       kpi_agv_loaded: "AGVs carrying load", kpi_agv_loaded_sub: "AGV moving {p} · {n} AGVs in view on average",
       r_margin: "Reaction margin", r_margin_sub: "started moving before closest approach",
-      r_peak: "Escape speed", r_onset: "Worker starts moving (scene time)", r_late: "Late reaction", r_ok: "Reacted in time", r_none: "No reaction data",
+      r_margin_unc: "margin uncertain · VLM views differ by {s} s",
+      r_peak: "Escape speed", r_onset: "Worker starts moving (scene time)", r_none: "No reaction data", r_sep: "closest {s}",
+      v_contact: "Contact", v_forced_evasion: "Forced to run", v_short_margin: "Margin too short", v_close_pass: "Close pass (≤ 2 m)",
       agv_moving: "AGV moving", agv_loaded: "AGV loaded", stationary: "Standing still", amr_moving: "AMR moving",
       humanoid_moving: "Humanoid moving", lane_activity: "Lane active", lane_activity_sub: "windows with a moving machine",
       machines_moving_spark: "machines moving over time", per_avg: "avg", views_n: "{n} views",
@@ -96,11 +98,13 @@
       kpi_people: "当前在场人数", kpi_people_sub: "平均 {avg} · {n} 个地面摄像头 · 截至 {t}",
       sec_safety: "安全", sec_safety_sub: "叉车与工人险情 · 多视角 VLM 判定 + 运动轨迹",
       sec_eff: "效率", sec_eff_sub: "w017 仓库机器人车队 · AGV / AMR / 人形机器人利用率",
-      kpi_reaction: "最短反应余量", kpi_reaction_sub: "工人在叉车最接近前开始躲避 · {m} 次中 {n} 次不足 1 秒",
+      kpi_reaction: "被迫奔跑躲避", kpi_reaction_sub: "工人不得不跑开的场次 · 最高逃离速度 {p} m/s · {s} 次余量不足 1 秒",
       kpi_fleet: "车队运行占比", kpi_fleet_sub: "设备时间中处于运行的比例 · {n} 个地面摄像头",
       kpi_agv_loaded: "AGV 载货占比", kpi_agv_loaded_sub: "AGV 运行 {p} · 平均 {n} 台 AGV 在画面内",
       r_margin: "反应余量", r_margin_sub: "最接近前开始躲避",
-      r_peak: "逃离速度", r_onset: "工人开始移动（场景时间）", r_late: "反应偏晚", r_ok: "及时反应", r_none: "无反应数据",
+      r_margin_unc: "余量不确定 · VLM 各视角相差 {s} 秒",
+      r_peak: "逃离速度", r_onset: "工人开始移动（场景时间）", r_none: "无反应数据", r_sep: "最近距离 {s}",
+      v_contact: "发生接触", v_forced_evasion: "被迫奔跑躲避", v_short_margin: "反应余量不足", v_close_pass: "近距离擦过（≤2 米）",
       agv_moving: "AGV 运行", agv_loaded: "AGV 载货", stationary: "静止设备", amr_moving: "AMR 运行",
       humanoid_moving: "人形机器人运行", lane_activity: "通道活跃", lane_activity_sub: "有设备在动的时间窗口",
       machines_moving_spark: "运行设备随时间变化", per_avg: "平均", views_n: "{n} 个视角",
@@ -766,23 +770,30 @@
   const metric = (value, label, cls = "") => `<div class="tm"><b class="${cls}">${value}</b><span>${esc(label)}</span></div>`;
   const ratioOrDash = (x) => (x == null ? tr("no_value") : pct(x));
 
+  const dangerTone = (sev) => (sev === "high" ? "red" : "amber");
+  const dangerTag = (r, sev) => `<span class="r-tag ${dangerTone(sev)}">${ICON.alert}${tr("v_" + (r.verdict || "close_pass"))}</span>`;
+  const peakMetric = (r, label) => metric(r.peak_mps != null ? `${num(r.peak_mps).toFixed(1)}<small> m/s</small>` : tr("no_value"),
+    label, (r.danger || []).includes("forced_evasion") ? "red" : "amber");
+  function marginMetric(r, sev, label) {
+    if (r.margin_sec == null) return metric(tr("no_value"), label);
+    if (!r.margin_reliable) return metric(`≈${num(r.margin_sec).toFixed(1)}<small> s</small>`, tr("r_margin_unc", { s: num(r.closest_spread_sec).toFixed(1) }), "muted");
+    return metric(`${num(r.margin_sec).toFixed(1)}<small> s</small>`, label, dangerTone(sev));
+  }
+
   function safetyCard(c) {
     const e = c.event, r = c.reaction;
     const media = c.clip ? `<video class="thumb hover-play" muted playsinline preload="metadata" src="${clipUrl(c.clip)}#t=${num(c.clip_t).toFixed(1)}"></video>` : "";
     const href = e ? `#alerts/${enc(e.event_id)}` : `#replay/${enc(c.site_id)}@0`;
-    const margin = r && r.margin_sec != null ? `${num(r.margin_sec).toFixed(1)}<small> s</small>` : tr("no_value");
+    const sev = e?.severity;
     const verdict = !r ? `<span class="muted">${tr("r_none")}</span>`
-      : `<span class="r-tag ${r.late ? "late" : "ok"}">${r.late ? tr("r_late") : tr("r_ok")}</span>`;
+      : `<span class="r-tags">${dangerTag(r, sev)}${r.min_separation ? `<span class="muted small">${tr("r_sep", { s: r.min_separation })}</span>` : ""}</span>`;
     return `<a class="task-card safety st-${esc(c.status)}" href="${href}">
       <div class="thumb-wrap">${media}<span class="cam-tag">${ICON.camera}${esc(c.site_id)} · ${esc(c.camera)}</span><span class="st-pill"><i></i>${tr("status_" + c.status)}</span></div>
       <div class="task-body">
         <div class="task-title"><b>${esc(c.title)}</b><span class="muted small">${tr("views_n", { n: c.views })} · ${fmtT(c.duration_sec)}</span></div>
         ${e ? `<div class="task-verdict"><span class="sev-tag sev-${esc(e.severity)}">${esc(sevLabel(e.severity))}</span><span>${typeIcon(e.type)}${esc(typeLabel(e.type))}</span><span class="mono">@ ${fmtT(e.scene_t)}</span><span class="mono muted">${pct(e.confidence)}</span></div>`
           : `<div class="task-verdict muted">${tr("no_alerts_site")}</div>`}
-        <div class="task-metrics">
-          ${metric(margin, tr("r_margin_sub"), r?.late ? "red" : "green")}
-          ${metric(r?.peak_mps != null ? `${num(r.peak_mps).toFixed(1)}<small> m/s</small>` : tr("no_value"), tr("r_peak"))}
-        </div>
+        ${r ? `<div class="task-metrics">${peakMetric(r, tr("r_peak"))}${marginMetric(r, sev, tr("r_margin_sub"))}</div>` : ""}
         <div class="task-foot">${verdict}<span class="link">${tr("open_detail")} →</span></div>
       </div></a>`;
   }
@@ -838,12 +849,13 @@
     const alertsKpi = `<div class="kpi accent-red"><div class="kpi-h">${ICON.alert}<span>${tr("kpi_alerts")}</span></div>
       <div class="kpi-v">${open.length}</div>
       <div class="sev-row">${["high", "medium", "low"].map((s) => `<span class="sev-tag sev-${s}">${sevLabel(s)} ${sevCount(s)}</span>`).join("")}</div></div>`;
-    const margin = k.reaction_min_margin == null ? tr("no_value") : `${num(k.reaction_min_margin).toFixed(1)}<small> s</small>`;
+    const runs = k.safety_runs ?? safety.length;
+    const forced = `${num(k.reaction_forced)}<small> / ${runs}</small>`;
     el.innerHTML = `
       <section class="kpis four">
         <div class="kpi-group safety"><span class="kpi-theme">${ICON.shield}${tr("sec_safety")}</span>
           ${alertsKpi}
-          ${kpiCard(ICON.clock, tr("kpi_reaction"), margin, tr("kpi_reaction_sub", { n: k.reaction_late ?? 0, m: k.safety_runs ?? safety.length }), num(k.reaction_late) ? "amber" : "cyan")}
+          ${kpiCard(ICON.clock, tr("kpi_reaction"), forced, tr("kpi_reaction_sub", { p: k.reaction_peak_max == null ? tr("no_value") : num(k.reaction_peak_max).toFixed(1), s: num(k.reaction_short_margin) }), num(k.reaction_forced) ? "red" : "amber")}
         </div>
         <div class="kpi-group efficiency"><span class="kpi-theme">${ICON.machine}${tr("sec_eff")}</span>
           ${kpiCard(ICON.machine, tr("kpi_fleet"), pct(k.machine_moving_ratio), tr("kpi_fleet_sub", { n: k.floor_cameras ?? eff.length }), "orange", k.machine_moving_ratio)}
@@ -952,11 +964,12 @@
         <div id="player"></div>
         <div class="views-row"><span class="label">${tr("views_title")}</span><div class="chips" id="viewChips"></div></div>
         ${e.description ? `<p class="desc">${esc(e.description)}</p>` : ""}
-        ${e.reaction ? `<div class="reaction-strip ${e.reaction.late ? "late" : "ok"}">
-          ${metric(e.reaction.margin_sec != null ? `${num(e.reaction.margin_sec).toFixed(1)}<small> s</small>` : tr("no_value"), `${tr("r_margin")} · ${tr("r_margin_sub")}`, e.reaction.late ? "red" : "green")}
-          ${metric(e.reaction.peak_mps != null ? `${num(e.reaction.peak_mps).toFixed(1)}<small> m/s</small>` : tr("no_value"), tr("r_peak"))}
+        ${e.reaction ? `<div class="reaction-strip ${dangerTone(e.severity)}">
+          ${peakMetric(e.reaction, tr("r_peak"))}
           ${metric(e.reaction.onset_t != null ? fmtT(e.reaction.onset_t) : tr("no_value"), tr("r_onset"))}
-          <span class="r-tag ${e.reaction.late ? "late" : "ok"}">${e.reaction.late ? tr("r_late") : tr("r_ok")}</span></div>` : ""}
+          ${marginMetric(e.reaction, e.severity, `${tr("r_margin")} · ${tr("r_margin_sub")}`)}
+          <span class="r-tags col">${(e.reaction.danger?.length ? e.reaction.danger : [e.reaction.verdict || "close_pass"])
+            .map((v) => dangerTag({ verdict: v }, e.severity)).join("")}</span></div>` : ""}
         <h3 class="sec-h">${tr("evidence")}</h3>
         <div class="evidence">
           <div class="ev-card"><div class="ev-h">${ICON.spark}${tr("ev_vlm")}</div>${renderValue(ev.vlm)}</div>
