@@ -15,6 +15,7 @@ match the app's data files.
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import socket
 import sys
@@ -46,6 +47,9 @@ TABLES = {
         ("original_video", _S), ("exported_at", _S)]),
 }
 CAPTION_COLUMNS = ("reasoning_content", "caption", "description", "summary")
+
+# On clusters without Elysium the SDK logs its sorted-columns probe as a failed RPC, then carries on.
+logging.getLogger("vastdb.errors").addFilter(lambda record: "without elysium enabled" not in record.getMessage())
 
 
 def setting(name: str) -> str:
