@@ -163,12 +163,17 @@ def print_summary(args, started, segs, events, util, recs, runner, sizes, calibr
     for e in events:
         print(f"  [{e['severity']:<6} {e['confidence']:.2f}] {e['type']:<15} {e['site_id']:<9} {e['camera']:<11} "
               f"t={e['scene_t']:6.1f}s  {e['title']}")
-    print("\nper-camera totals (people_avg / idle_ratio / machine_moving_ratio):")
+    print("\nfleet per floor/lane camera (machines moving / AGV moving / AGV loaded / windows with motion):")
     for c in util["cameras"]:
-        if c["view"] in ("floor", "lane") or c["camera"] == "ceiling_00":
-            t = c["totals"]
-            print(f"  {c['site_id']:<9} {c['camera']:<11} {t['people_avg']:6.2f} / {t['idle_ratio']:.2f} / "
-                  f"{t['machine_moving_ratio']:.2f}")
+        if c["view"] in ("floor", "lane"):
+            f, agv = c.get("fleet") or {}, (c.get("fleet") or {}).get("types", {}).get("agv", {})
+            print(f"  {c['site_id']:<9} {c['camera']:<11} {c['totals']['machine_moving_ratio']:.2f} / "
+                  f"{agv.get('moving_ratio', 0):.2f} / {agv.get('loaded_ratio', 0):.2f} / "
+                  f"{f.get('active_window_share', 0):.2f}")
+    for e in events:
+        if e.get("reaction"):
+            r = e["reaction"]
+            print(f"  reaction {e['site_id']:<9} margin {r['margin_sec']} s, peak {r['peak_mps']} m/s")
     print(f"\nflags ({len(util['flags'])}): {dict(Counter(f['type'] for f in util['flags']))}")
     for f in util["flags"]:
         print(f"  {f['type']:<15} {f['message']}")

@@ -23,21 +23,42 @@ WORD_NUMBERS = {w: i for i, w in enumerate("zero one two three four five six sev
 SMALL_INTS = set(range(13))
 MAX_UNGROUNDED_SHARE = 0.1
 MIN_SUMMARY_CHARS = 80
-TOTAL_KEYS = ("people_avg", "idle_ratio", "machine_moving_ratio", "person_seconds", "idle_person_seconds")
+TOTAL_KEYS = ("people_avg", "machine_moving_ratio")
+REACTION_KEYS = ("onset_t", "evade_t", "peak_mps", "closest_t", "margin_sec")
+
+
+def _fleet(c: dict) -> dict:
+    f = c.get("fleet") or {}
+    return {"types": f.get("types") or {}, "active_window_share": f.get("active_window_share", 0.0),
+            "stalled_window_share": f.get("stalled_window_share", 0.0)}
 
 
 def compact_payload(util: dict, events: list[dict]) -> dict:
+    flags = [f for f in util["flags"] if f["type"] != "labor_surplus"]
     return {
         "counts": {"events_by_severity": {s: sum(e["severity"] == s for e in events) for s in ("high", "medium", "low")},
-                   "flags_by_type": dict(Counter(f["type"] for f in util["flags"]))},
+                   "flags_by_type": dict(Counter(f["type"] for f in flags))},
         "cameras": [{"site_id": c["site_id"], "camera": c["camera"], "view": c["view"],
-                     **{k: c["totals"][k] for k in TOTAL_KEYS}}
+                     **{k: c["totals"][k] for k in TOTAL_KEYS}, "fleet": _fleet(c)}
                     for c in util["cameras"] if c["view"] in ("floor", "lane")],
         "flags": [{k: f[k] for k in ("flag_id", "type", "site_id", "camera", "zone", "scene_t0", "scene_t1",
-                                     "metric", "message")} for f in util["flags"]],
-        "events": [{k: e[k] for k in ("event_id", "type", "severity", "confidence", "site_id", "camera", "scene_t",
-                                      "title")} for e in events],
+                                     "metric", "message")} for f in flags],
+        "events": [{**{k: e[k] for k in ("event_id", "type", "severity", "confidence", "site_id", "camera", "scene_t",
+                                         "title")},
+                    **({"reaction": {k: e["reaction"][k] for k in REACTION_KEYS}} if e.get("reaction") else {})}
+                   for e in events],
     }
+
+
+def reaction_text(r: dict | None) -> str:
+    if not r:
+        return ""
+    parts = []
+    if r.get("margin_sec") is not None:
+        parts.append(f"worker started moving {r['margin_sec']:.1f} s before the closest approach")
+    if r.get("peak_mps") is not None:
+        parts.append(f"peak escape speed {r['peak_mps']:.1f} m/s")
+    return "; ".join(parts)
 
 
 def _numbers(text: str) -> list[float]:
@@ -162,10 +183,20 @@ def shift_report(payload: dict, recs: list[dict], summary: str) -> str:
     """Markdown report: the summary paragraph plus sections rendered directly from the data."""
     lines = ["## Summary", summary.strip(), "", "## Safety"]
     lines += [f"- **{e['title']}** ({e['severity']}, confidence {e['confidence']:.2f}): {e['site_id']} {e['camera']}, "
-              f"t={e['scene_t']:.1f} s" for e in payload["events"][:8]] or ["- No safety events."]
-    lines += ["", "## Utilization", "| Camera | People avg | Idle share | Machines moving share |", "|---|---|---|---|"]
-    lines += [f"| {c['site_id']} {c['camera']} | {c['people_avg']:.1f} | {c['idle_ratio'] * 100:.0f}% | "
-              f"{c['machine_moving_ratio'] * 100:.0f}% |" for c in payload["cameras"]]
+              f"t={e['scene_t']:.1f} s" + (f"; {reaction_text(e.get('reaction'))}" if e.get("reaction") else "")
+              for e in payload["events"][:8]] or ["- No safety events."]
+
+    def share(c: dict, mtype: str, key: str) -> str:
+        v = c["fleet"]["types"].get(mtype, {}).get(key)
+        return "-" if v is None else f"{v * 100:.0f}%"
+
+    lines += ["", "## Fleet efficiency",
+              "| Camera | Machines moving | AGV moving | AGV loaded | AMR moving | Humanoid moving | Windows with motion |",
+              "|---|---|---|---|---|---|---|"]
+    lines += [f"| {c['site_id']} {c['camera']} | {c['machine_moving_ratio'] * 100:.0f}% | {share(c, 'agv', 'moving_ratio')} | "
+              f"{share(c, 'agv', 'loaded_ratio')} | {share(c, 'amr', 'moving_ratio')} | "
+              f"{share(c, 'humanoid', 'moving_ratio')} | {c['fleet']['active_window_share'] * 100:.0f}% |"
+              for c in payload["cameras"]]
     lines += [""] + [f"- {f['message']}" for f in payload["flags"]]
     lines += ["", "## Actions"] + [f"{i}. **{r['title']}**: {r['action']}" for i, r in enumerate(recs, 1)]
     return "\n".join(lines)
@@ -192,7 +223,8 @@ def template(payload: dict) -> tuple[list[dict], str]:
             "Enable proximity slowdown/stop on pallet stackers, mark pedestrian walkways and require stackers to "
             "halt when a worker is within the exclusion zone.",
             "; ".join(f"{e['site_id']}: {e['title']} ({e['severity']}, confidence {e['confidence']:.2f}) at "
-                      f"t={e['scene_t']:.1f} s" for e in close),
+                      f"t={e['scene_t']:.1f} s" + (f" ({reaction_text(e.get('reaction'))})" if e.get("reaction") else "")
+                      for e in close),
             "Removes the close-approach situations seen in these runs.", [e["event_id"] for e in close])
     in_path = [e for e in events if e["type"] == "person_in_path"]
     if in_path:
@@ -209,8 +241,6 @@ def template(payload: dict) -> tuple[list[dict], str]:
                       for e in floor[:4]),
             "Lower exposure to moving robots on the shared floor.", [e["event_id"] for e in floor])
     for ftype, title, action, impact in (
-        ("labor_surplus", "Rebalance idle labor", "Reassign idle workers from the flagged area to active tasks or "
-         "stagger their start times.", "Higher labor utilization during the flagged windows."),
         ("machine_surplus", "Right-size the active robot fleet", "Park or redeploy robots that stay stationary in "
          "the flagged windows.", "Fewer idle machines occupying floor space."),
         ("congestion", "Relieve crowding hot spots", "Move standing work away from the flagged zone and keep it as "

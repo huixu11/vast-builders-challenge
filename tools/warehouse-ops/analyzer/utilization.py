@@ -1,13 +1,10 @@
-"""Per-camera utilization (5 s series, totals, heatmaps) and explainable rule-based flags."""
+"""Per-camera utilization (5 s series, totals, fleet, heatmaps) and explainable rule-based flags."""
 from __future__ import annotations
 
 import statistics
 from collections import defaultdict
 
-LABOR_IDLE_RATIO = 0.5
-LABOR_MIN_IDLE_PEOPLE = 2.0
-SUSTAIN_SEC = 60.0
-ZONE_IDLE_PERSONS = 3.0
+MACHINE_TYPES = ("agv", "amr", "humanoid", "forklift")
 MACHINE_MIN_TOTAL = 2.0
 MACHINE_MOVING_RATIO = 0.4
 MACHINE_WINDOW_SEC = 60.0
@@ -53,7 +50,9 @@ def _zone_name(col: int, row: int) -> str:
 
 def camera_series(rows: list[dict]) -> tuple[list[dict], dict, dict]:
     series = [{"scene_t0": r["scene_t0"], "scene_t1": r["scene_t1"], "people": r["people"], "idle": r["idle"],
-               "moving": r["moving"], "machines_total": r["machines_total"], "machines_moving": r["machines_moving"]}
+               "moving": r["moving"], "machines_total": r["machines_total"], "machines_moving": r["machines_moving"],
+               "agv_total": r["machines"]["agv"]["total"], "agv_moving": r["machines"]["agv"]["moving"],
+               "agv_loaded": r["machines"]["agv"]["loaded"]}
               for r in rows]
     dur = [r["scene_t1"] - r["scene_t0"] for r in rows]
     person_s = sum(r["people"] * d for r, d in zip(rows, dur))
@@ -74,6 +73,32 @@ def camera_series(rows: list[dict]) -> tuple[list[dict], dict, dict]:
     return series, totals, heatmap
 
 
+def fleet_summary(rows: list[dict]) -> dict:
+    """Per machine type: average count, share of machine-time moving, stationary count; AGV loaded share.
+    Window shares: 5 s windows with any machine moving, and with machines in view but none moving.
+    Rows need "machines" ({type: {total, moving[, loaded]}}); works on utilization rows and segment records."""
+    n = len(rows)
+    out: dict = {"types": {}, "source": "vlm" if rows and all(r.get("machines_source") == "vlm" for r in rows)
+                 else "mixed"}
+    if not n:
+        return out
+    for t in MACHINE_TYPES:
+        ms = [(r.get("machines") or {}).get(t) or {} for r in rows]
+        total, moving = sum(m.get("total", 0) for m in ms), sum(m.get("moving", 0) for m in ms)
+        if not total:
+            continue
+        d = {"avg": round(total / n, 2), "moving_ratio": round(moving / total, 3),
+             "stationary_avg": round((total - moving) / n, 2)}
+        if t == "agv":
+            d["loaded_ratio"] = round(sum(m.get("loaded", 0) for m in ms) / total, 3)
+        out["types"][t] = d
+    present = [r for r in rows if sum(m.get("total", 0) for m in (r.get("machines") or {}).values())]
+    moving = [r for r in present if sum(m.get("moving", 0) for m in r["machines"].values())]
+    out["active_window_share"] = round(len(moving) / n, 3)
+    out["stalled_window_share"] = round((len(present) - len(moving)) / n, 3)
+    return out
+
+
 def camera_flags(site_id: str, camera: str, rows: list[dict], totals: dict) -> list[dict]:
     flags: list[tuple[float, dict]] = []
 
@@ -84,26 +109,6 @@ def camera_flags(site_id: str, camera: str, rows: list[dict], totals: dict) -> l
                               "site_id": site_id, "camera": camera, "zone": zone, "scene_t0": t0, "scene_t1": t1,
                               "metric": {"name": name, "value": round(value, 2), "threshold": threshold},
                               "message": message}))
-
-    # labor_surplus: camera-wide idle share, or one zone with many idle people, sustained >= 60 s
-    for run in _runs(rows, lambda r: r["people"] > 0 and r["idle"] / r["people"] > LABOR_IDLE_RATIO
-                     and r["idle"] >= LABOR_MIN_IDLE_PEOPLE):
-        t0, t1, dur = _span(run)
-        if dur >= SUSTAIN_SEC:
-            idle, people = statistics.fmean(r["idle"] for r in run), statistics.fmean(r["people"] for r in run)
-            ratio = idle / people
-            add("labor_surplus", None, t0, t1, "idle_ratio", ratio, LABOR_IDLE_RATIO,
-                f"{camera}: {ratio:.0%} of people idle for {dur:.0f} s (t={t0:.0f}-{t1:.0f} s); "
-                f"on average {idle:.1f} idle of {people:.1f} people in view.", dur * ratio)
-    for row in range(GRID_ROWS):
-        for col in range(GRID_COLS):
-            for run in _runs(rows, lambda r: r["zones"]["idle"][row][col] >= ZONE_IDLE_PERSONS):
-                t0, t1, dur = _span(run)
-                if dur >= SUSTAIN_SEC:
-                    idle = statistics.fmean(r["zones"]["idle"][row][col] for r in run)
-                    add("labor_surplus", [col, row], t0, t1, "zone_idle_persons", idle, ZONE_IDLE_PERSONS,
-                        f"{camera} {_zone_name(col, row)}: {idle:.1f} people standing idle on average for "
-                        f"{dur:.0f} s (t={t0:.0f}-{t1:.0f} s).", dur * idle / ZONE_IDLE_PERSONS)
 
     # machine_surplus: >= 2 machines visible but < 40% of machine-time moving, over sliding 60 s windows
     vlm_rows = [r for r in rows if r["machines_source"] == "vlm"]
@@ -181,6 +186,6 @@ def build(cam_rows: dict[tuple, list[dict]], views: dict[tuple, str]) -> dict:
     for (site_id, camera), rows in cam_rows.items():
         series, totals, heatmap = camera_series(rows)
         cameras.append({"site_id": site_id, "camera": camera, "view": views[(site_id, camera)], "series": series,
-                        "totals": totals, "heatmap": heatmap})
+                        "totals": totals, "heatmap": heatmap, "fleet": fleet_summary(rows)})
         flags += camera_flags(site_id, camera, rows, totals)
     return {"cameras": cameras, "flags": flags}

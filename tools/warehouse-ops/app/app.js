@@ -12,13 +12,22 @@
       loading: "Loading warehouse data…", retry: "Retry", error_load: "Could not load data from the backend.",
       timeout: "Request timed out", updated: "New analyzer results loaded", refresh_view: "Refresh view",
       kpi_people: "People on floor now", kpi_people_sub: "avg {avg} · {n} floor cameras · window ending {t}",
-      kpi_idle: "Idle labor", kpi_idle_sub: "{m} idle person-minutes in the window",
-      kpi_machines: "Machines moving now", kpi_machines_sub: "{p} of machine-time moving",
+      sec_safety: "Safety", sec_safety_sub: "Forklift–worker close calls · multi-view VLM verdict + motion tracking",
+      sec_eff: "Efficiency", sec_eff_sub: "Robot fleet on the w017 floor · AGV / AMR / humanoid utilization",
+      kpi_reaction: "Shortest reaction margin", kpi_reaction_sub: "worker started moving before closest approach · {n} of {m} runs under 1 s",
+      kpi_fleet: "Fleet moving", kpi_fleet_sub: "share of machine-time in motion · {n} floor cameras",
+      kpi_agv_loaded: "AGVs carrying load", kpi_agv_loaded_sub: "AGV moving {p} · {n} AGVs in view on average",
+      r_margin: "Reaction margin", r_margin_sub: "started moving before closest approach",
+      r_peak: "Escape speed", r_onset: "Worker starts moving (scene time)", r_late: "Late reaction", r_ok: "Reacted in time", r_none: "No reaction data",
+      agv_moving: "AGV moving", agv_loaded: "AGV loaded", stationary: "Standing still", amr_moving: "AMR moving",
+      humanoid_moving: "Humanoid moving", lane_activity: "Lane active", lane_activity_sub: "windows with a moving machine",
+      machines_moving_spark: "machines moving over time", per_avg: "avg", views_n: "{n} views",
+      open_detail: "Review alert", open_resources: "Fleet details",
       kpi_alerts: "Open safety alerts", kpi_flags: "Operational flags", kpi_flags_sub: "bottlenecks · surplus · congestion",
       kpi_footage: "Camera views analysed", kpi_footage_sub: "{m} min of video · {n} segments",
       cam_status: "Camera status", open_wall: "Open video wall", alert_feed: "Live alert feed",
       top_flags: "Top operational flags", top_recs: "Recommended actions", view_all: "View all",
-      people: "people", idle: "idle", machines: "machines", avg: "avg", moving: "moving",
+      people: "people", machines: "machines", avg: "avg", moving: "moving",
       status_ok: "Normal", status_warn: "Watch", status_alert: "Alert", scenario: "scenario",
       scenario_views: "{n} synchronized views", no_alerts_site: "No alerts", new: "NEW",
       sev_high: "High", sev_medium: "Medium", sev_low: "Low",
@@ -42,9 +51,10 @@
       ask_about_q: "What happened in {id} and what should we change to prevent it?",
       clip_error: "Clip unavailable right now", primary: "primary",
       site: "Site", camera: "Camera", people_time: "People over time", machines_time: "Machines over time",
-      s_people: "people", s_idle: "idle", s_moving: "moving", s_m_total: "machines in view", s_m_moving: "machines moving",
-      idle_by_cam: "Idle ratio by camera", util_by_cam: "Machine utilization by camera",
-      heatmap: "Zone heatmap", occupancy: "Occupancy", idle_layer: "Idle", window_avg: "window average",
+      s_people: "people", s_moving: "walking", s_m_total: "machines in view", s_m_moving: "machines moving",
+      s_agv_moving: "AGVs moving", s_agv_loaded: "AGVs loaded",
+      agv_by_cam: "AGV moving share by camera", util_by_cam: "Machine utilization by camera",
+      heatmap: "Zone heatmap", occupancy: "Occupancy", window_avg: "window average",
       flags: "Operational flags", recs: "Recommendations", rationale: "Why", impact: "Expected impact",
       threshold: "threshold", no_flags: "No operational flags for this site.", no_recs: "No recommendations yet.",
       no_util: "No utilization data yet — the analyzer is still running.",
@@ -53,7 +63,7 @@
       chart_hint: "Click the chart to inspect a moment · shaded bands are flags · red ticks are safety alerts",
       eye_views: "Eye-level views", speed: "Speed", buffering: "Buffering…", sync_note: "All views share one clock",
       events_title: "Events at this site", replay_hint: "Click a tile to enlarge it", no_videos: "No videos indexed yet.",
-      ask_title: "Ask the warehouse", ask_ph: "Ask about safety, idle labor, machines, bottlenecks…", send: "Send",
+      ask_title: "Ask the warehouse", ask_ph: "Ask about forklift safety, AGVs, robots, bottlenecks…", send: "Send",
       suggested: "Suggested questions", think1: "Searching the video archive…", think2: "Grounding on analyzer facts…",
       think3: "Reasoning with the language model…",
       engine_llm: "Language model · grounded on analyzer facts + video search",
@@ -64,8 +74,8 @@
       how_1: "Facts: safety alerts, flags, per-camera metrics and recommendations from the analyzer.",
       how_2: "Video search: VSS hybrid search over both locations finds matching clips.",
       how_3: "The language model answers using only those facts and clips and cites their ids.",
-      ask_welcome: "Ask anything about safety, labor and machines in the analyzed footage. Answers cite the alerts, flags and clips they rely on.",
-      q1: "Which camera has the most idle workers?", q2: "Show forklift near-misses", q3: "Where should I move idle workers?",
+      ask_welcome: "Ask anything about forklift safety and robot-fleet efficiency in the analyzed footage. Answers cite the alerts, flags and clips they rely on.",
+      q1: "How quickly did workers react to the forklift?", q2: "Show forklift near-misses", q3: "Which camera has the most AGVs standing still?",
       q4: "Was anyone hit by a forklift?", q5: "Are AGVs or robots sitting idle anywhere?",
       report_scope: "Report scope", all_cams: "All cameras", gen_ai: "Generate with AI", metrics_only: "Metrics only",
       copy: "Copy", download: "Download .md", print: "Print", writing: "The language model is writing the narrative…",
@@ -84,13 +94,22 @@
       loading: "正在加载仓库数据…", retry: "重试", error_load: "无法从后端加载数据。",
       timeout: "请求超时", updated: "已加载新的分析结果", refresh_view: "刷新视图",
       kpi_people: "当前在场人数", kpi_people_sub: "平均 {avg} · {n} 个地面摄像头 · 截至 {t}",
-      kpi_idle: "空闲人力", kpi_idle_sub: "窗口内空闲 {m} 人·分钟",
-      kpi_machines: "当前运行设备", kpi_machines_sub: "设备时间中 {p} 处于运行",
+      sec_safety: "安全", sec_safety_sub: "叉车与工人险情 · 多视角 VLM 判定 + 运动轨迹",
+      sec_eff: "效率", sec_eff_sub: "w017 仓库机器人车队 · AGV / AMR / 人形机器人利用率",
+      kpi_reaction: "最短反应余量", kpi_reaction_sub: "工人在叉车最接近前开始躲避 · {m} 次中 {n} 次不足 1 秒",
+      kpi_fleet: "车队运行占比", kpi_fleet_sub: "设备时间中处于运行的比例 · {n} 个地面摄像头",
+      kpi_agv_loaded: "AGV 载货占比", kpi_agv_loaded_sub: "AGV 运行 {p} · 平均 {n} 台 AGV 在画面内",
+      r_margin: "反应余量", r_margin_sub: "最接近前开始躲避",
+      r_peak: "逃离速度", r_onset: "工人开始移动（场景时间）", r_late: "反应偏晚", r_ok: "及时反应", r_none: "无反应数据",
+      agv_moving: "AGV 运行", agv_loaded: "AGV 载货", stationary: "静止设备", amr_moving: "AMR 运行",
+      humanoid_moving: "人形机器人运行", lane_activity: "通道活跃", lane_activity_sub: "有设备在动的时间窗口",
+      machines_moving_spark: "运行设备随时间变化", per_avg: "平均", views_n: "{n} 个视角",
+      open_detail: "查看告警", open_resources: "车队详情",
       kpi_alerts: "未处理安全告警", kpi_flags: "运营标记", kpi_flags_sub: "瓶颈 · 冗余 · 拥堵",
       kpi_footage: "已分析摄像头视角", kpi_footage_sub: "{m} 分钟视频 · {n} 个片段",
       cam_status: "摄像头状态", open_wall: "打开视频墙", alert_feed: "实时告警流",
       top_flags: "主要运营标记", top_recs: "建议措施", view_all: "查看全部",
-      people: "人", idle: "空闲", machines: "设备", avg: "平均", moving: "移动",
+      people: "人", machines: "设备", avg: "平均", moving: "运行",
       status_ok: "正常", status_warn: "关注", status_alert: "告警", scenario: "场景",
       scenario_views: "{n} 个同步视角", no_alerts_site: "无告警", new: "新",
       sev_high: "高", sev_medium: "中", sev_low: "低",
@@ -114,9 +133,10 @@
       ask_about_q: "{id} 发生了什么？我们应该如何改进以防止再次发生？",
       clip_error: "视频暂时不可用", primary: "主视角",
       site: "站点", camera: "摄像头", people_time: "人数随时间变化", machines_time: "设备随时间变化",
-      s_people: "人数", s_idle: "空闲", s_moving: "移动", s_m_total: "画面内设备", s_m_moving: "运行设备",
-      idle_by_cam: "各摄像头空闲比例", util_by_cam: "各摄像头设备利用率",
-      heatmap: "区域热力图", occupancy: "占用", idle_layer: "空闲", window_avg: "窗口平均",
+      s_people: "人数", s_moving: "走动", s_m_total: "画面内设备", s_m_moving: "运行设备",
+      s_agv_moving: "运行 AGV", s_agv_loaded: "载货 AGV",
+      agv_by_cam: "各摄像头 AGV 运行占比", util_by_cam: "各摄像头设备利用率",
+      heatmap: "区域热力图", occupancy: "占用", window_avg: "窗口平均",
       flags: "运营标记", recs: "建议", rationale: "原因", impact: "预期效果",
       threshold: "阈值", no_flags: "该站点无运营标记。", no_recs: "暂无建议。",
       no_util: "暂无利用率数据——分析器仍在运行。",
@@ -125,7 +145,7 @@
       chart_hint: "点击图表查看某一时刻 · 阴影带为运营标记 · 红色刻度为安全告警",
       eye_views: "平视视角", speed: "速度", buffering: "缓冲中…", sync_note: "所有视角共享同一时钟",
       events_title: "该站点的事件", replay_hint: "点击画面可放大", no_videos: "尚无已索引的视频。",
-      ask_title: "向仓库提问", ask_ph: "询问安全、空闲人力、设备、瓶颈…", send: "发送",
+      ask_title: "向仓库提问", ask_ph: "询问叉车安全、AGV、机器人、瓶颈…", send: "发送",
       suggested: "推荐问题", think1: "正在检索视频库…", think2: "正在结合分析数据…",       think3: "语言模型推理中…",
       engine_llm: "语言模型 · 基于分析数据与视频检索",
       engine_cosmos: "语言模型 · 基于分析数据与视频检索",
@@ -135,8 +155,8 @@
       how_1: "事实：来自分析器的安全告警、运营标记、各摄像头指标和建议。",
       how_2: "视频检索：VSS 混合检索覆盖两个地点，找到相关片段。",
       how_3: "语言模型仅依据这些事实和片段作答，并引用其编号。",
-      ask_welcome: "可以询问已分析视频中的安全、人力和设备情况。回答会引用所依据的告警、标记和片段。",
-      q1: "哪个摄像头的空闲工人最多？", q2: "显示叉车险情", q3: "我应该把空闲工人调到哪里？",
+      ask_welcome: "可以询问已分析视频中的叉车安全和机器人车队效率。回答会引用所依据的告警、标记和片段。",
+      q1: "工人对叉车的反应有多快？", q2: "显示叉车险情", q3: "哪个摄像头静止的 AGV 最多？",
       q4: "有人被叉车撞到吗？", q5: "有没有闲置的 AGV 或机器人？",
       report_scope: "报告范围", all_cams: "全部摄像头", gen_ai: "用 AI 生成", metrics_only: "仅指标",
       copy: "复制", download: "下载 .md", print: "打印", writing: "语言模型正在撰写叙述…",
@@ -743,35 +763,52 @@
       <div class="kpi-s">${esc(sub)}</div></div>`;
   }
 
-  function camCard(c) {
+  const metric = (value, label, cls = "") => `<div class="tm"><b class="${cls}">${value}</b><span>${esc(label)}</span></div>`;
+  const ratioOrDash = (x) => (x == null ? tr("no_value") : pct(x));
+
+  function safetyCard(c) {
+    const e = c.event, r = c.reaction;
+    const media = c.clip ? `<video class="thumb hover-play" muted playsinline preload="metadata" src="${clipUrl(c.clip)}#t=${num(c.clip_t).toFixed(1)}"></video>` : "";
+    const href = e ? `#alerts/${enc(e.event_id)}` : `#replay/${enc(c.site_id)}@0`;
+    const margin = r && r.margin_sec != null ? `${num(r.margin_sec).toFixed(1)}<small> s</small>` : tr("no_value");
+    const verdict = !r ? `<span class="muted">${tr("r_none")}</span>`
+      : `<span class="r-tag ${r.late ? "late" : "ok"}">${r.late ? tr("r_late") : tr("r_ok")}</span>`;
+    return `<a class="task-card safety st-${esc(c.status)}" href="${href}">
+      <div class="thumb-wrap">${media}<span class="cam-tag">${ICON.camera}${esc(c.site_id)} · ${esc(c.camera)}</span><span class="st-pill"><i></i>${tr("status_" + c.status)}</span></div>
+      <div class="task-body">
+        <div class="task-title"><b>${esc(c.title)}</b><span class="muted small">${tr("views_n", { n: c.views })} · ${fmtT(c.duration_sec)}</span></div>
+        ${e ? `<div class="task-verdict"><span class="sev-tag sev-${esc(e.severity)}">${esc(sevLabel(e.severity))}</span><span>${typeIcon(e.type)}${esc(typeLabel(e.type))}</span><span class="mono">@ ${fmtT(e.scene_t)}</span><span class="mono muted">${pct(e.confidence)}</span></div>`
+          : `<div class="task-verdict muted">${tr("no_alerts_site")}</div>`}
+        <div class="task-metrics">
+          ${metric(margin, tr("r_margin_sub"), r?.late ? "red" : "green")}
+          ${metric(r?.peak_mps != null ? `${num(r.peak_mps).toFixed(1)}<small> m/s</small>` : tr("no_value"), tr("r_peak"))}
+        </div>
+        <div class="task-foot">${verdict}<span class="link">${tr("open_detail")} →</span></div>
+      </div></a>`;
+  }
+
+  function efficiencyCard(c) {
     const chunks = S.idx.cams[c.site_id + "|" + c.camera]?.chunks || [];
     const ch = chunks.at(-1);
     const media = ch ? `<video class="thumb" muted loop playsinline autoplay preload="auto" src="${clipUrl(ch.original_video)}"></video>` : "";
-    const spark = sparkline([{ values: c.spark_people, color: C.cyan, fill: true }, { values: c.spark_idle, color: C.amber }], { w: 260, h: 40 });
-    return `<a class="cam-card st-${esc(c.status)}" href="#resources/${enc(c.site_id)}/${enc(c.camera)}">
-      <div class="thumb-wrap">${media}<span class="cam-tag">${ICON.camera}${esc(c.camera)} · ${esc(viewLabel(c.view))}</span><span class="st-pill"><i></i>${tr("status_" + c.status)}</span></div>
-      <div class="cam-body"><div class="cam-stats">
-        <div><b>${fmtNum(c.people_now)}</b><span>${tr("people")} · ${tr("avg")} ${fmtNum(c.people_avg)}</span></div>
-        <div><b class="${num(c.idle_ratio) >= 0.5 ? "amber" : ""}">${pct(c.idle_ratio)}</b><span>${tr("idle")}</span></div>
-        <div><b>${fmtNum(c.machines_moving_now)}/${fmtNum(c.machines_total_now)}</b><span>${tr("machines")} ${tr("moving")}</span></div>
-      </div>${spark}</div></a>`;
-  }
-
-  function scenarioCard(site) {
-    const events = S.data.events.filter((e) => e.site_id === site.site_id);
-    const top = events[0];
-    const cams = camOrder(site);
-    const cam = top?.camera || cams[0]?.camera;
-    const sceneT = top ? num(top.scene_t) : num(site.duration_sec) / 2;
-    const ch = cam ? chunkAt(site.site_id, cam, sceneT) : null;
-    const status = events.some((e) => e.severity === "high") ? "alert" : events.length ? "warn" : "ok";
-    const media = ch ? `<video class="thumb hover-play" muted playsinline preload="metadata" src="${clipUrl(ch.original_video)}#t=${Math.max(0, sceneT - ch.scene_t0).toFixed(1)}"></video>` : "";
-    const href = top ? `#alerts/${enc(top.event_id)}` : `#replay/${enc(site.site_id)}@0`;
-    return `<a class="cam-card scenario st-${status}" href="${href}">
-      <div class="thumb-wrap">${media}<span class="cam-tag">${ICON.camera}${esc(site.site_id)} · ${esc(cam || "")}</span><span class="st-pill"><i></i>${tr("status_" + status)}</span></div>
-      <div class="cam-body"><div class="scn-title">${esc(site.title || site.site_id)}</div>
-        <div class="scn-meta">${tr("scenario_views", { n: cams.length })} · ${fmtT(site.duration_sec)}</div>
-        <div class="scn-events">${events.length ? events.slice(0, 2).map((e) => `<span class="sev-tag sev-${esc(e.severity)}">${typeIcon(e.type)}${esc(typeLabel(e.type))} @ ${fmtT(e.scene_t)}</span>`).join("") : `<span class="muted">${tr("no_alerts_site")}</span>`}</div>
+    const lane = c.view === "lane";
+    const spark = sparkline([{ values: c.spark_machines_total, color: C.slate }, { values: c.spark_machines, color: C.orange, fill: true }], { w: 300, h: 38 });
+    const lead = lane
+      ? metric(pct(c.active_window_share), tr("lane_activity_sub"), "cyan")
+      : metric(pct(c.agv_moving_ratio), tr("agv_moving"), num(c.agv_moving_ratio) < 0.4 ? "amber" : "cyan");
+    return `<a class="task-card efficiency st-${esc(c.status)}" href="#resources/${enc(c.site_id)}/${enc(c.camera)}">
+      <div class="thumb-wrap">${media}<span class="cam-tag">${ICON.camera}${esc(c.camera)} · ${esc(viewLabel(c.view))}</span>${lane ? `<span class="st-pill lane"><i></i>${tr("lane_activity")}</span>` : ""}</div>
+      <div class="task-body">
+        <div class="task-metrics four">
+          ${lead}
+          ${lane ? metric(pct(c.agv_moving_ratio), tr("agv_moving")) : ""}
+          ${metric(pct(c.agv_loaded_ratio), tr("agv_loaded"))}
+          ${metric(fmtNum(c.stationary_avg), `${tr("stationary")} · ${tr("per_avg")}`, num(c.stationary_avg) >= 3 ? "amber" : "")}
+          ${lane ? "" : metric(ratioOrDash(c.amr_moving_ratio), tr("amr_moving"))}
+        </div>
+        <div class="task-sub muted small">${tr("humanoid_moving")} <b>${ratioOrDash(c.humanoid_moving_ratio)}</b>${lane ? ` · ${tr("amr_moving")} <b>${ratioOrDash(c.amr_moving_ratio)}</b>` : ""}</div>
+        <div class="task-spark">${spark}<span class="muted small">${tr("machines_moving_spark")}</span></div>
+        <div class="task-foot"><span class="muted small">${fmtNum(c.machines_moving_now)}/${fmtNum(c.machines_total_now)} ${tr("machines")} ${tr("moving")}</span><span class="link">${tr("open_resources")} →</span></div>
       </div></a>`;
   }
 
@@ -795,42 +832,38 @@
     const o = S.data.overview || {}, k = o.kpis || {};
     const open = S.data.events.filter((e) => !S.acked.has(e.event_id));
     const sevCount = (s) => open.filter((e) => e.severity === s).length;
-    const floorCams = (o.cameras || []).filter((c) => c.kind === "continuous");
-    const scenarios = S.idx.sites.filter((s) => siteKind(s) === "scenario");
-    const flags = (o.top_flags || []).slice(0, 5);
+    const safety = (o.safety_cards || []).slice(0, 3);
+    const eff = (o.efficiency_cards || []).slice(0, 3);
     const recs = (o.top_recommendations || []).slice(0, 3);
     const alertsKpi = `<div class="kpi accent-red"><div class="kpi-h">${ICON.alert}<span>${tr("kpi_alerts")}</span></div>
       <div class="kpi-v">${open.length}</div>
       <div class="sev-row">${["high", "medium", "low"].map((s) => `<span class="sev-tag sev-${s}">${sevLabel(s)} ${sevCount(s)}</span>`).join("")}</div></div>`;
+    const margin = k.reaction_min_margin == null ? tr("no_value") : `${num(k.reaction_min_margin).toFixed(1)}<small> s</small>`;
     el.innerHTML = `
-      <section class="kpis">
-        ${kpiCard(ICON.users, tr("kpi_people"), fmtNum(k.people_now), tr("kpi_people_sub", { avg: fmtNum(k.people_avg), n: k.floor_cameras ?? floorCams.length, t: fmtT(k.now_scene_t) }), "cyan")}
-        ${kpiCard(ICON.clock, tr("kpi_idle"), pct(k.idle_ratio), tr("kpi_idle_sub", { m: fmtNum(k.idle_person_minutes) }), num(k.idle_ratio) >= 0.5 ? "amber" : "cyan", k.idle_ratio)}
-        ${kpiCard(ICON.machine, tr("kpi_machines"), `${fmtNum(k.machines_active_now)}<small>/${fmtNum(k.machines_total_now)}</small>`, tr("kpi_machines_sub", { p: pct(k.machine_moving_ratio) }), "orange", k.machine_moving_ratio)}
-        ${alertsKpi}
-        ${kpiCard(ICON.flag, tr("kpi_flags"), String(k.flags ?? S.data.util.flags.length), tr("kpi_flags_sub"), "violet")}
-        ${kpiCard(ICON.camera, tr("kpi_footage"), String(k.cameras ?? 0), tr("kpi_footage_sub", { m: fmtNum(k.video_minutes), n: k.segments ?? 0 }), "blue")}
+      <section class="kpis four">
+        <div class="kpi-group safety"><span class="kpi-theme">${ICON.shield}${tr("sec_safety")}</span>
+          ${alertsKpi}
+          ${kpiCard(ICON.clock, tr("kpi_reaction"), margin, tr("kpi_reaction_sub", { n: k.reaction_late ?? 0, m: k.safety_runs ?? safety.length }), num(k.reaction_late) ? "amber" : "cyan")}
+        </div>
+        <div class="kpi-group efficiency"><span class="kpi-theme">${ICON.machine}${tr("sec_eff")}</span>
+          ${kpiCard(ICON.machine, tr("kpi_fleet"), pct(k.machine_moving_ratio), tr("kpi_fleet_sub", { n: k.floor_cameras ?? eff.length }), "orange", k.machine_moving_ratio)}
+          ${kpiCard(ICON.bars, tr("kpi_agv_loaded"), pct(k.agv_loaded_ratio), tr("kpi_agv_loaded_sub", { p: pct(k.agv_moving_ratio), n: fmtNum(k.agv_avg) }), "blue", k.agv_loaded_ratio)}
+        </div>
       </section>
-      <section class="ov-grid">
-        <div class="card">
-          <div class="card-h"><h2>${ICON.camera}${tr("cam_status")}</h2><a class="link" href="#replay">${tr("open_wall")} →</a></div>
-          <div class="cam-grid">${floorCams.map(camCard).join("")}${scenarios.map(scenarioCard).join("")}</div>
-        </div>
-        <div class="ov-side">
-          <div class="card feed-card">
-            <div class="card-h"><h2><span class="live-dot"></span>${tr("alert_feed")}</h2><a class="link" href="#alerts">${tr("view_all")} →</a></div>
-            <div class="feed">${S.data.events.slice(0, 8).map(feedItem).join("") || emptyState(ICON.shield, tr("alerts_none"))}</div>
-          </div>
-          <div class="card"><div class="card-h"><h2>${ICON.flag}${tr("top_flags")}</h2><a class="link" href="#resources">${tr("view_all")} →</a></div>
-            <div class="flag-items">${flags.map(flagItem).join("") || emptyState(ICON.flag, tr("no_flags"))}</div></div>
-          <div class="card"><div class="card-h"><h2>${ICON.spark}${tr("top_recs")}</h2></div>
-            <div class="rec-items">${recs.map(recItem).join("") || emptyState(ICON.spark, tr("no_recs"))}</div></div>
-        </div>
-      </section>`;
+      <section class="task-row safety">
+        <div class="task-h"><h2>${ICON.shield}${tr("sec_safety")}</h2><span class="muted">${tr("sec_safety_sub")}</span><a class="link" href="#alerts">${tr("view_all")} →</a></div>
+        <div class="task-grid">${safety.map(safetyCard).join("") || emptyState(ICON.shield, tr("alerts_none"))}</div>
+      </section>
+      <section class="task-row efficiency">
+        <div class="task-h"><h2>${ICON.machine}${tr("sec_eff")}</h2><span class="muted">${tr("sec_eff_sub")}</span><a class="link" href="#resources">${tr("view_all")} →</a></div>
+        <div class="task-grid">${eff.map(efficiencyCard).join("") || emptyState(ICON.bars, tr("no_util"))}</div>
+      </section>
+      ${recs.length ? `<section class="rec-strip"><div class="task-h"><h2>${ICON.spark}${tr("top_recs")}</h2></div>
+        <div class="rec-items row">${recs.map(recItem).join("")}</div></section>` : ""}`;
     $$("video.thumb", el).forEach((v) => {
       onCleanup(() => stopVideo(v));
       if (!v.classList.contains("hover-play")) return;
-      const card = v.closest(".cam-card");
+      const card = v.closest(".task-card, .cam-card");
       card.addEventListener("mouseenter", () => v.play().catch(() => {}));
       card.addEventListener("mouseleave", () => v.pause());
     });
@@ -919,6 +952,11 @@
         <div id="player"></div>
         <div class="views-row"><span class="label">${tr("views_title")}</span><div class="chips" id="viewChips"></div></div>
         ${e.description ? `<p class="desc">${esc(e.description)}</p>` : ""}
+        ${e.reaction ? `<div class="reaction-strip ${e.reaction.late ? "late" : "ok"}">
+          ${metric(e.reaction.margin_sec != null ? `${num(e.reaction.margin_sec).toFixed(1)}<small> s</small>` : tr("no_value"), `${tr("r_margin")} · ${tr("r_margin_sub")}`, e.reaction.late ? "red" : "green")}
+          ${metric(e.reaction.peak_mps != null ? `${num(e.reaction.peak_mps).toFixed(1)}<small> m/s</small>` : tr("no_value"), tr("r_peak"))}
+          ${metric(e.reaction.onset_t != null ? fmtT(e.reaction.onset_t) : tr("no_value"), tr("r_onset"))}
+          <span class="r-tag ${e.reaction.late ? "late" : "ok"}">${e.reaction.late ? tr("r_late") : tr("r_ok")}</span></div>` : ""}
         <h3 class="sec-h">${tr("evidence")}</h3>
         <div class="evidence">
           <div class="ev-card"><div class="ev-h">${ICON.spark}${tr("ev_vlm")}</div>${renderValue(ev.vlm)}</div>
@@ -1009,26 +1047,28 @@
     const allRecs = S.data.recs.recommendations || [];
     const recs = allRecs.filter((r) => (r.refs || []).some((id) => siteIds.has(id)));
     const recList = recs.length ? recs : allRecs;
-    const idleItems = cams.map((c) => ({ key: c.camera, label: c.camera, value: num(c.totals?.idle_ratio), color: num(c.totals?.idle_ratio) >= 0.5 ? C.amber : C.cyan }));
+    const agvShare = (c) => num(c.fleet?.types?.agv?.moving_ratio);
+    const agvItems = cams.map((c) => ({ key: c.camera, label: c.camera, value: agvShare(c), color: agvShare(c) < 0.4 ? C.amber : C.cyan }));
+    R.layer = "occupancy";
     const utilItems = cams.map((c) => ({ key: c.camera, label: c.camera, value: num(c.totals?.machine_moving_ratio), color: C.orange }));
     el.innerHTML = `<div class="res-root">
       <div class="res-head">
         <div class="seg-tabs">${sites.map((s) => `<button type="button" class="seg${s.site_id === R.site ? " on" : ""}" data-site="${esc(s.site_id)}"><b>${esc(s.site_id)}</b><small>${esc(siteKind(s) === "scenario" ? tr("scenario") : (s.cameras || []).length + " " + tr("camera").toLowerCase())}</small></button>`).join("")}</div>
         <div class="chips cam-chips">${cams.map((c) => `<button type="button" class="chip${c.camera === R.camera ? " on" : ""}" data-cam="${esc(c.camera)}">${esc(c.camera)} <small>${esc(viewLabel(c.view))}</small></button>`).join("")}</div>
       </div>
-      <div class="res-title"><h1>${esc(site?.title || R.site)}</h1><span class="muted">${esc(R.camera)} · ${esc(viewLabel(cam?.view))} · ${tr("avg")} ${fmtNum(cam?.totals?.people_avg)} ${tr("people")} · ${pct(cam?.totals?.idle_ratio)} ${tr("idle")}</span></div>
+      <div class="res-title"><h1>${esc(site?.title || R.site)}</h1><span class="muted">${esc(R.camera)} · ${esc(viewLabel(cam?.view))} · ${tr("avg")} ${fmtNum(cam?.totals?.people_avg)} ${tr("people")} · ${pct(cam?.totals?.machine_moving_ratio)} ${tr("machines")} ${tr("moving")}${cam?.fleet?.types?.agv ? ` · ${tr("agv_moving")} ${pct(agvShare(cam))} · ${tr("agv_loaded")} ${pct(cam.fleet.types.agv.loaded_ratio)}` : ""}</span></div>
       <div class="res-grid">
         <div class="card res-people"><div class="card-h"><h2>${ICON.users}${tr("people_time")}</h2>
-          <div class="legend"><span style="--c:${C.cyan}">${tr("s_people")}</span><span style="--c:${C.amber}">${tr("s_idle")}</span><span style="--c:${C.green}">${tr("s_moving")}</span></div></div>
+          <div class="legend"><span style="--c:${C.cyan}">${tr("s_people")}</span><span style="--c:${C.green}">${tr("s_moving")}</span></div></div>
           <div class="chart-host" id="chPeople"></div><p class="hint">${tr("chart_hint")}</p></div>
         <div class="card res-heat"><div class="card-h"><h2>${ICON.grid}${tr("heatmap")}</h2>
-          <div class="seg-ctrl">${["occupancy", "idle"].map((l) => `<button type="button" data-layer="${l}" class="${R.layer === l ? "on" : ""}">${tr(l === "idle" ? "idle_layer" : "occupancy")}</button>`).join("")}</div></div>
+          <span class="muted small">${tr("occupancy")}</span></div>
           <div class="heat-wrap" id="heat"><video muted playsinline preload="auto"></video><canvas></canvas><div class="heat-cap mono"></div></div>
           <div id="segDetail" class="seg-detail"></div></div>
         <div class="card res-mach"><div class="card-h"><h2>${ICON.machine}${tr("machines_time")}</h2>
-          <div class="legend"><span style="--c:${C.slate}">${tr("s_m_total")}</span><span style="--c:${C.orange}">${tr("s_m_moving")}</span></div></div>
+          <div class="legend"><span style="--c:${C.slate}">${tr("s_m_total")}</span><span style="--c:${C.orange}">${tr("s_m_moving")}</span><span style="--c:${C.cyan}">${tr("s_agv_moving")}</span><span style="--c:${C.green}">${tr("s_agv_loaded")}</span></div></div>
           <div class="chart-host" id="chMach"></div></div>
-        <div class="card res-bars"><div class="card-h"><h2>${ICON.bars}${tr("idle_by_cam")}</h2></div>${barList(idleItems, { selected: R.camera, threshold: 0.5 })}
+        <div class="card res-bars"><div class="card-h"><h2>${ICON.bars}${tr("agv_by_cam")}</h2></div>${barList(agvItems, { selected: R.camera, threshold: 0.4 })}
           <div class="card-h sub"><h2>${ICON.machine}${tr("util_by_cam")}</h2></div>${barList(utilItems, { selected: R.camera })}</div>
         <div class="card res-flags"><div class="card-h"><h2>${ICON.flag}${tr("flags")}</h2><span class="count">${siteFlags.length}</span></div>
           <div class="flag-list">${siteFlags.map((f) => flagRow(f)).join("") || emptyState(ICON.flag, tr("no_flags"))}</div></div>
@@ -1048,11 +1088,14 @@
         .map((e) => ({ id: e.event_id, t: num(e.scene_t), color: SEV_COLOR[e.severity] || C.red, label: `${typeLabel(e.type)} @ ${fmtT(e.scene_t)}` }));
       const points = series.map((p) => ({ ...p, t: (num(p.scene_t0) + num(p.scene_t1)) / 2, t0: num(p.scene_t0) }));
       $("#chPeople", el).innerHTML = lineChart({ t0, t1, height: 220, bands, markers, cursor: R.t != null ? R.t + 2.5 : null,
-        series: [{ points: pts("people"), color: C.cyan, area: true }, { points: pts("idle"), color: C.amber }, { points: pts("moving"), color: C.green, dash: true }] });
+        series: [{ points: pts("people"), color: C.cyan, area: true }, { points: pts("moving"), color: C.green, dash: true }] });
+      const hasAgv = series.some((p) => p.agv_total != null);
       $("#chMach", el).innerHTML = lineChart({ t0, t1, height: 170, markers, cursor: R.t != null ? R.t + 2.5 : null,
-        series: [{ points: pts("machines_total"), color: C.slate, dash: true }, { points: pts("machines_moving"), color: C.orange, area: true }] });
-      const tipPeople = (p) => `<b>${fmtT(p.scene_t0)}–${fmtT(p.scene_t1)}</b><span style="--c:${C.cyan}">${tr("s_people")} ${fmtNum(p.people)}</span><span style="--c:${C.amber}">${tr("s_idle")} ${fmtNum(p.idle)}</span><span style="--c:${C.green}">${tr("s_moving")} ${fmtNum(p.moving)}</span>`;
-      const tipMach = (p) => `<b>${fmtT(p.scene_t0)}–${fmtT(p.scene_t1)}</b><span style="--c:${C.slate}">${tr("s_m_total")} ${fmtNum(p.machines_total)}</span><span style="--c:${C.orange}">${tr("s_m_moving")} ${fmtNum(p.machines_moving)}</span>`;
+        series: [{ points: pts("machines_total"), color: C.slate, dash: true }, { points: pts("machines_moving"), color: C.orange, area: true },
+          ...(hasAgv ? [{ points: pts("agv_moving"), color: C.cyan }, { points: pts("agv_loaded"), color: C.green, dash: true }] : [])] });
+      const tipPeople = (p) => `<b>${fmtT(p.scene_t0)}–${fmtT(p.scene_t1)}</b><span style="--c:${C.cyan}">${tr("s_people")} ${fmtNum(p.people)}</span><span style="--c:${C.green}">${tr("s_moving")} ${fmtNum(p.moving)}</span>`;
+      const tipMach = (p) => `<b>${fmtT(p.scene_t0)}–${fmtT(p.scene_t1)}</b><span style="--c:${C.slate}">${tr("s_m_total")} ${fmtNum(p.machines_total)}</span><span style="--c:${C.orange}">${tr("s_m_moving")} ${fmtNum(p.machines_moving)}</span>`
+        + (p.agv_total != null ? `<span style="--c:${C.cyan}">${tr("s_agv_moving")} ${fmtNum(p.agv_moving)}/${fmtNum(p.agv_total)}</span><span style="--c:${C.green}">${tr("s_agv_loaded")} ${fmtNum(p.agv_loaded)}</span>` : "");
       const pick = ({ t, flag }) => {
         if (flag) { const f = S.byId.flag[flag]; R.flag = flag; R.t = num(f?.scene_t0); history.replaceState(null, "", "#resources/" + enc(flag)); markFlags(); }
         else { R.t = t; }
@@ -1161,7 +1204,7 @@
         ctx.strokeRect(ox + c * cellW + 2, oy + r * cellH + 2, cellW - 4, cellH - 4);
         ctx.setLineDash([]);
       }
-      cap.textContent = `${R.camera} · ${row ? `${fmtT(row.scene_t0)}–${fmtT(row.scene_t1)}` : tr("window_avg")} · ${R.layer === "idle" ? tr("idle_layer") : tr("occupancy")}`;
+      cap.textContent = `${R.camera} · ${row ? `${fmtT(row.scene_t0)}–${fmtT(row.scene_t1)}` : tr("window_avg")} · ${tr("occupancy")}`;
       renderSegDetail($("#segDetail"), row);
     }
     function update() { seekVideo(); draw(); }
@@ -1189,7 +1232,7 @@
     const vlm = typeof row.vlm_summary === "string" ? row.vlm_summary : row.vlm_summary ? JSON.stringify(row.vlm_summary) : "";
     host.innerHTML = `
       <div class="seg-h"><b>${tr("seg_detail", { t: `${fmtT(row.scene_t0)}–${fmtT(row.scene_t1)}` })}</b>${row.congestion ? `<span class="cong cong-${esc(row.congestion)}">${tr("congestion")}: ${esc(row.congestion)}</span>` : ""}</div>
-      <div class="seg-stats"><span><b>${fmtNum(p.per_frame_median)}</b> ${tr("people")}</span><span><b class="amber">${fmtNum(p.idle)}</b> ${tr("idle")}</span><span><b>${fmtNum(p.moving)}</b> ${tr("moving")}</span><span><b>${fmtNum(mMoving)}/${fmtNum(mTotal)}</b> ${tr("machines")}</span></div>
+      <div class="seg-stats"><span><b>${fmtNum(p.per_frame_median)}</b> ${tr("people")}</span><span><b>${fmtNum(mMoving)}/${fmtNum(mTotal)}</b> ${tr("machines")} ${tr("moving")}</span>${m.agv && num(m.agv.total) ? `<span><b>${fmtNum(m.agv.moving)}/${fmtNum(m.agv.total)}</b> ${tr("agv_moving")}</span><span><b>${fmtNum(m.agv.loaded)}</b> ${tr("agv_loaded")}</span>` : ""}</div>
       ${vlm ? `<div class="seg-text"><span class="k">${ICON.spark}${tr("vlm_summary")}</span><p>${esc(vlm)}</p></div>` : ""}
       ${row.pipeline_caption ? `<div class="seg-text old"><span class="k">${tr("pipeline_caption")}</span><p>${esc(row.pipeline_caption)}</p></div>` : ""}
       <div class="seg-foot"><div class="chips">${(row.event_ids || []).map(refChip).join("")}</div><a class="btn sm" href="#replay/${enc(row.site_id || S.res.site)}@${num(row.scene_t0)}">${ICON.grid}${tr("open_replay")}</a></div>`;

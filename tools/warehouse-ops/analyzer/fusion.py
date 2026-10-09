@@ -412,6 +412,28 @@ def w017_events(cands: list[dict], controls: list[dict], checks: dict[str, dict]
     return deduped, dict(annotations), calibration
 
 
+# ------------------------------------------------------------------------------------------------- reaction
+LATE_REACTION_SEC = 1.0
+
+
+def reaction(event: dict) -> dict | None:
+    """Worker reaction from stored evidence: when the worker started moving (median standstill end over ceiling
+    views), when they broke into an evasive move, peak escape speed, and the margin to the VLM's closest approach."""
+    ev = event.get("evidence") or {}
+    kin, cons = ev.get("kinematics") or {}, ev.get("consensus") or {}
+    views = [v for v in kin.get("per_view") or [] if str(v.get("camera", "")).startswith("ceiling") and "evasive_t" in v]
+    if not views:
+        return None
+    onset = cons.get("t_onset")
+    evade = _median([v["evasive_t"] for v in views])
+    closest = cons.get("t_vlm")
+    start = onset if onset is not None else evade
+    margin = round(closest - start, 2) if closest is not None else None
+    return {"onset_t": onset, "evade_t": evade, "peak_mps": _median([v.get("peak_mps") for v in views]),
+            "closest_t": closest, "margin_sec": margin, "late": margin is not None and margin < LATE_REACTION_SEC,
+            "views": len(views)}
+
+
 # --------------------------------------------------------------------------------------------------- driver
 def build_events(segs: list[Segment], cam_kin: dict, vlm_w3: dict, moments: tuple[list[dict], list[dict]],
                  checks: dict[str, dict]) -> tuple[list[dict], dict[str, list[str]], dict[str, list[dict]], dict]:
@@ -430,6 +452,10 @@ def build_events(segs: list[Segment], cam_kin: dict, vlm_w3: dict, moments: tupl
     cands, controls = moments
     w017, annotations, calibration = w017_events(cands, controls, {k: v["json"] for k, v in checks.items()})
     events += w017
+    for e in events:
+        r = reaction(e)
+        if r:
+            e["reaction"] = r
 
     seen: Counter = Counter()
     for e in events:

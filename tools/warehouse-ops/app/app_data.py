@@ -25,7 +25,9 @@ FILES = {
     "recommendations": ("data_recommendations.json", dict),
 }
 SEVERITY_RANK = {"high": 0, "medium": 1, "low": 2}
-FLAG_PRIORITY = {"bottleneck": 0, "congestion": 1, "labor_surplus": 2, "machine_surplus": 3, "underused_zone": 4}
+FLAG_PRIORITY = {"bottleneck": 0, "congestion": 1, "machine_surplus": 2, "underused_zone": 3}
+HIDDEN_FLAG_TYPES = {"labor_surplus"}
+VIEW_ORDER = {"floor": 0, "lane": 1, "ceiling": 2, "eye": 3}
 _TIMESTAMP_PREFIX = re.compile(r"^\d{8}_\d{6}_")
 
 
@@ -72,7 +74,7 @@ class Snapshot:
         self.events = sorted(dicts(raw.get("events")), key=lambda e: (
             SEVERITY_RANK.get(e.get("severity"), 3), -num(e.get("confidence"))))
         self.util_cameras = dicts(util.get("cameras"))
-        self.flags = dicts(util.get("flags"))
+        self.flags = [f for f in dicts(util.get("flags")) if f.get("type") not in HIDDEN_FLAG_TYPES]
         self.recommendations_doc = recs
         self.recommendations = dicts(recs.get("recommendations"))
         self.shift_report_md = recs.get("shift_report_md") or ""
@@ -258,27 +260,68 @@ def camera_cards(snap: Snapshot) -> list[dict]:
         evs = events_by_cam.get(key, [])
         status = "alert" if any(e.get("severity") == "high" for e in evs) else (
             "warn" if evs or flags_by_cam.get(key) else "ok")
+        fleet = c.get("fleet") or {}
+        types = fleet.get("types") or {}
         cards.append({
             "site_id": key[0], "camera": key[1], "view": c.get("view") or snap.camera_meta.get(key, {}).get("view"),
             "kind": snap.site_kind(key[0]), "status": status,
-            "people_now": _last(series, "people"), "idle_now": _last(series, "idle"),
+            "people_now": _last(series, "people"),
             "machines_moving_now": _last(series, "machines_moving"), "machines_total_now": _last(series, "machines_total"),
-            "people_avg": num(totals.get("people_avg")), "idle_ratio": num(totals.get("idle_ratio")),
+            "people_avg": num(totals.get("people_avg")),
             "machine_moving_ratio": num(totals.get("machine_moving_ratio")),
-            "spark_people": [num(p.get("people")) for p in series],
-            "spark_idle": [num(p.get("idle")) for p in series],
+            "machines_avg": num(totals.get("machines_avg")),
+            "agv_moving_ratio": num((types.get("agv") or {}).get("moving_ratio")),
+            "agv_loaded_ratio": num((types.get("agv") or {}).get("loaded_ratio")),
+            "agv_avg": num((types.get("agv") or {}).get("avg")),
+            "amr_moving_ratio": (types.get("amr") or {}).get("moving_ratio"),
+            "humanoid_moving_ratio": (types.get("humanoid") or {}).get("moving_ratio"),
+            "stationary_avg": round(sum(num(t.get("stationary_avg")) for t in types.values()), 2),
+            "active_window_share": num(fleet.get("active_window_share")),
+            "stalled_window_share": num(fleet.get("stalled_window_share")),
             "spark_machines": [num(p.get("machines_moving")) for p in series],
+            "spark_machines_total": [num(p.get("machines_total")) for p in series],
             "event_ids": [e.get("event_id") for e in evs], "flag_ids": [f.get("flag_id") for f in flags_by_cam.get(key, [])],
         })
     return cards
+
+
+def safety_cards(snap: Snapshot) -> list[dict]:
+    """One card per scenario site: its top event (with worker reaction) and the clip to preview."""
+    cards = []
+    for site in snap.sites:
+        sid = str(site.get("site_id") or "")
+        if snap.site_kind(sid) != "scenario":
+            continue
+        events = [e for e in snap.events if e.get("site_id") == sid]
+        top = events[0] if events else None
+        cams = [str(c.get("camera")) for c in dicts(site.get("cameras"))]
+        cam = (top or {}).get("camera") or next((c for c in cams if c.startswith("ceiling")), cams[0] if cams else "")
+        scene_t = num(top.get("scene_t")) if top else num(site.get("duration_sec")) / 2
+        chunk = snap.chunk_at(sid, cam, scene_t) if cam else None
+        cards.append({
+            "site_id": sid, "title": site.get("title") or sid, "camera": cam, "views": len(cams),
+            "duration_sec": num(site.get("duration_sec")), "scene_t": scene_t,
+            "status": "alert" if any(e.get("severity") == "high" for e in events) else ("warn" if events else "ok"),
+            "clip": chunk["original_video"] if chunk else None,
+            "clip_t": round(max(0.0, scene_t - chunk["scene_t0"]), 2) if chunk else 0.0,
+            "event": {k: top.get(k) for k in ("event_id", "type", "severity", "confidence", "title", "scene_t")}
+            if top else None,
+            "reaction": top.get("reaction") if top else None,
+            "n_events": len(events),
+        })
+    return sorted(cards, key=lambda c: [int(x) if x.isdigit() else x for x in re.split(r"(\d+)", c["site_id"])])
 
 
 def overview(snap: Snapshot) -> dict:
     cards = camera_cards(snap)
     floor = [c for c in cards if c["kind"] == "continuous"] or cards
     floor_util = [c for c in snap.util_cameras if snap.site_kind(c.get("site_id")) == "continuous"] or snap.util_cameras
-    person_s = sum(num((c.get("totals") or {}).get("person_seconds")) for c in floor_util)
-    idle_s = sum(num((c.get("totals") or {}).get("idle_person_seconds")) for c in floor_util)
+    agv = [((c.get("fleet") or {}).get("types") or {}).get("agv") or {} for c in floor_util]
+    agv_total = sum(num(a.get("avg")) for a in agv)
+    safety = safety_cards(snap)
+    margins = [num(c["reaction"]["margin_sec"]) for c in safety
+               if c.get("reaction") and c["reaction"].get("margin_sec") is not None]
+    peaks = [num(c["reaction"]["peak_mps"]) for c in safety if c.get("reaction") and c["reaction"].get("peak_mps")]
     m_total = sum(num(p.get("machines_total")) for c in floor_util for p in dicts(c.get("series")))
     m_moving = sum(num(p.get("machines_moving")) for c in floor_util for p in dicts(c.get("series")))
     now_t = max((num(dicts(c.get("series"))[-1].get("scene_t1")) for c in floor_util if dicts(c.get("series"))),
@@ -297,8 +340,15 @@ def overview(snap: Snapshot) -> dict:
             "people_now": round(sum(c["people_now"] for c in floor), 1),
             "people_avg": round(sum(c["people_avg"] for c in floor), 1),
             "now_scene_t": now_t,
-            "idle_ratio": round(idle_s / person_s, 3) if person_s else 0.0,
-            "idle_person_minutes": round(idle_s / 60, 1),
+            "reaction_min_margin": min(margins) if margins else None,
+            "reaction_late": sum(1 for c in safety if (c.get("reaction") or {}).get("late")),
+            "reaction_peak_max": max(peaks) if peaks else None,
+            "safety_runs": len(safety),
+            "agv_moving_ratio": round(sum(num(a.get("avg")) * num(a.get("moving_ratio")) for a in agv) / agv_total, 3)
+            if agv_total else 0.0,
+            "agv_loaded_ratio": round(sum(num(a.get("avg")) * num(a.get("loaded_ratio")) for a in agv) / agv_total, 3)
+            if agv_total else 0.0,
+            "agv_avg": round(agv_total, 1),
             "machines_active_now": round(sum(c["machines_moving_now"] for c in floor), 1),
             "machines_total_now": round(sum(c["machines_total_now"] for c in floor), 1),
             "machine_moving_ratio": round(m_moving / m_total, 3) if m_total else 0.0,
@@ -311,6 +361,8 @@ def overview(snap: Snapshot) -> dict:
             "floor_cameras": len(floor),
         },
         "cameras": cards,
+        "safety_cards": safety,
+        "efficiency_cards": sorted(floor, key=lambda c: (VIEW_ORDER.get(c["view"], 9), c["camera"])),
         "alerts": [{k: e.get(k) for k in ("event_id", "type", "severity", "confidence", "site_id", "camera",
                                           "scene_t", "title")} for e in snap.events[:12]],
         "top_flags": ranked_flags(snap)[:5],

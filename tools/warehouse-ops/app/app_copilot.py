@@ -90,15 +90,40 @@ def cited(text: str, snap: Snapshot) -> list[dict]:
 # ---------------------------------------------------------------------- facts
 def _cam_totals(cams: list[dict]) -> dict:
     tot = [c.get("totals") or {} for c in cams]
-    person_s = sum(num(t.get("person_seconds")) for t in tot)
-    idle_s = sum(num(t.get("idle_person_seconds")) for t in tot)
     m_tot = sum(num(p.get("machines_total")) for c in cams for p in dicts(c.get("series")))
     m_mov = sum(num(p.get("machines_moving")) for c in cams for p in dicts(c.get("series")))
+    agv = [_fleet_type(c, "agv") for c in cams]
+    agv_n = sum(num(a.get("avg")) for a in agv)
     return {"people_sum": round(sum(num(t.get("people_avg")) for t in tot), 2),
             "people_mean": round(sum(num(t.get("people_avg")) for t in tot) / len(tot), 2) if tot else 0.0,
-            "idle_ratio": round(idle_s / person_s, 3) if person_s else 0.0,
             "machine_moving_ratio": round(m_mov / m_tot, 3) if m_tot else 0.0,
-            "person_min": round(person_s / 60, 1), "idle_person_min": round(idle_s / 60, 1)}
+            "agv_moving_ratio": round(sum(num(a.get("avg")) * num(a.get("moving_ratio")) for a in agv) / agv_n, 3)
+            if agv_n else 0.0,
+            "agv_loaded_ratio": round(sum(num(a.get("avg")) * num(a.get("loaded_ratio")) for a in agv) / agv_n, 3)
+            if agv_n else 0.0}
+
+
+def _fleet_type(cam: dict, mtype: str) -> dict:
+    return ((cam.get("fleet") or {}).get("types") or {}).get(mtype) or {}
+
+
+def _fleet_text(cam: dict) -> str:
+    f = cam.get("fleet") or {}
+    parts = [f"{t}: avg {num(d.get('avg'))}, moving_ratio {num(d.get('moving_ratio'))}"
+             + (f", loaded_ratio {num(d.get('loaded_ratio'))}" if "loaded_ratio" in d else "")
+             + f", stationary_avg {num(d.get('stationary_avg'))}" for t, d in (f.get("types") or {}).items()]
+    return "; ".join(parts) + (f"; windows_with_moving_machine={num(f.get('active_window_share'))}" if f else "")
+
+
+def reaction_text(r: dict | None) -> str:
+    if not r:
+        return ""
+    parts = []
+    if r.get("margin_sec") is not None:
+        parts.append(f"worker started moving {num(r['margin_sec'])} s before the closest approach")
+    if r.get("peak_mps") is not None:
+        parts.append(f"peak escape speed {num(r['peak_mps'])} m/s")
+    return "; ".join(parts)
 
 
 def _busiest_zone(cam: dict) -> str:
@@ -119,13 +144,12 @@ def camera_lines(snap: Snapshot, util: list[dict], per_camera: bool = False) -> 
                 t = c.get("totals") or {}
                 lines.append(
                     f"- {sid}/{c.get('camera')} [{c.get('view')}]: people_avg={num(t.get('people_avg'))}, "
-                    f"idle_ratio={num(t.get('idle_ratio'))}, machine_moving_ratio={num(t.get('machine_moving_ratio'))}, "
-                    f"person_minutes={round(num(t.get('person_seconds')) / 60, 1)}, "
-                    f"idle_person_minutes={round(num(t.get('idle_person_seconds')) / 60, 1)}{_busiest_zone(c)}")
+                    f"machine_moving_ratio={num(t.get('machine_moving_ratio'))}, fleet: {_fleet_text(c)}"
+                    f"{_busiest_zone(c)}")
         else:
             agg = _cam_totals(cams)
-            lines.append(f"- {sid} ({len(cams)} synchronized views of one scenario): people_avg={agg['people_mean']}, "
-                         f"idle_ratio={agg['idle_ratio']}, machine_moving_ratio={agg['machine_moving_ratio']}")
+            lines.append(f"- {sid} ({len(cams)} synchronized views of one forklift scenario): "
+                         f"people_avg={agg['people_mean']}")
     return lines
 
 
@@ -133,7 +157,8 @@ def event_line(e: dict) -> str:
     ev = e.get("evidence") or {}
     return (f"- [{e.get('event_id')}] {e.get('severity')} {e.get('type')} at {e.get('site_id')}/{e.get('camera')}, "
             f"scene time {fmt_t(e.get('scene_t'))}, confidence {num(e.get('confidence'))}: {short(e.get('title'), 120)}. "
-            f"{short(e.get('description'), 220)} Consensus: {short(ev.get('consensus'), 160)}")
+            + (f"Reaction: {reaction_text(e.get('reaction'))}. " if e.get("reaction") else "")
+            + f"{short(e.get('description'), 220)} Consensus: {short(ev.get('consensus'), 160)}")
 
 
 def flag_line(f: dict) -> str:
@@ -157,7 +182,9 @@ def facts_block(snap: Snapshot) -> str:
         cams = ", ".join(f"{c.get('camera')}[{c.get('view')}]" for c in dicts(s.get("cameras"))[:12])
         lines.append(f"- {s.get('site_id')}: {short(s.get('title'), 90)} ({s.get('location')}, {snap.site_kind(s.get('site_id'))}, "
                      f"{num(s.get('duration_sec')):g} s of video; cameras: {cams})")
-    lines.append("CAMERA METRICS (idle_ratio = idle person-time / person-time; machine_moving_ratio = moving machine-time / machine-time):")
+    lines.append("CAMERA METRICS (machine_moving_ratio = moving machine-time / machine-time; per machine type: "
+                 "moving_ratio, AGV loaded_ratio = loaded AGV-time / AGV-time, stationary_avg = machines standing "
+                 "still on average; person counts include humanoid robots):")
     lines += camera_lines(snap, snap.util_cameras)
     lines.append("SAFETY EVENTS:")
     lines += [event_line(e) for e in snap.events[:40]] or ["- none detected"]
@@ -172,20 +199,23 @@ def rules_answer(question: str, snap: Snapshot) -> str:
     q = question.lower()
     parts: list[str] = []
     floor = [c for c in snap.util_cameras if snap.site_kind(c.get("site_id")) == "continuous"]
-    if any(k in q for k in ("idle", "surplus", "labor", "labour", "worker", "空闲", "闲置", "人力", "工人")):
-        top = sorted(floor, key=lambda c: -num((c.get("totals") or {}).get("idle_person_seconds")))[:3]
-        if top:
-            parts.append("**Idle labor by camera** (idle person-minutes, idle share):")
-            for c in top:
-                t = c.get("totals") or {}
-                parts.append(f"- {c.get('site_id')}/{c.get('camera')}: {round(num(t.get('idle_person_seconds')) / 60, 1)} min, "
-                             f"{pct(t.get('idle_ratio'))} idle, {num(t.get('people_avg'))} people on average")
-        parts += [f"- [{f.get('flag_id')}] {short(f.get('message'), 200)}" for f in snap.flags if f.get("type") == "labor_surplus"]
+    if any(k in q for k in ("agv", "amr", "robot", "fleet", "machine", "idle", "surplus", "utiliz", "efficien",
+                            "lane", "机器人", "设备", "车队", "闲置", "效率", "利用", "通道")):
+        parts.append("**Fleet by camera** (AGV moving · AGV loaded · machines standing still on average):")
+        for c in floor:
+            agv = _fleet_type(c, "agv")
+            stationary = sum(num(d.get("stationary_avg")) for d in ((c.get("fleet") or {}).get("types") or {}).values())
+            parts.append(f"- {c.get('site_id')}/{c.get('camera')} [{c.get('view')}]: {pct(agv.get('moving_ratio'))} · "
+                         f"{pct(agv.get('loaded_ratio'))} · {round(stationary, 1)}")
+        parts += [f"- [{f.get('flag_id')}] {short(f.get('message'), 200)}" for f in snap.flags
+                  if f.get("type") == "machine_surplus"]
     if any(k in q for k in ("forklift", "stacker", "near", "collision", "miss", "path", "safety", "agv", "alert",
                             "叉车", "碰撞", "险", "安全", "告警")):
         parts.append("**Safety alerts:**")
         parts += [f"- [{e.get('event_id')}] {e.get('severity')} {e.get('type')} — {short(e.get('title'), 100)} "
-                  f"({e.get('site_id')}/{e.get('camera')} @ {fmt_t(e.get('scene_t'))})" for e in snap.events[:8]] or ["- none"]
+                  f"({e.get('site_id')}/{e.get('camera')} @ {fmt_t(e.get('scene_t'))})"
+                  + (f"; {reaction_text(e.get('reaction'))}" if e.get("reaction") else "")
+                  for e in snap.events[:8]] or ["- none"]
     if any(k in q for k in ("move", "where", "recommend", "should", "reassign", "improve", "建议", "调", "怎么", "如何")):
         parts.append("**Recommended actions:**")
         parts += [f"- [{r.get('rec_id')}] {short(r.get('title'), 120)} — {short(r.get('action'), 180)}"
@@ -230,9 +260,10 @@ LABELS = {
            "value": "Value", "key": "Key metrics", "cams": "Cameras", "alerts": "Safety alerts",
            "flags": "Bottlenecks & surplus", "recs": "Recommended actions", "none_alerts": "No safety alerts in scope.",
            "none_flags": "No operational flags in scope.", "none_recs": "No recommendations in scope.",
-           "people": "People visible (avg)", "idle": "Idle share of person-time", "idle_min": "Idle person-minutes",
+           "people": "People visible (avg)", "agv_moving": "AGV moving (share of AGV-time)",
+           "agv_loaded": "AGV loaded (share of AGV-time)", "reaction": "Worker reaction before closest approach",
            "machines": "Machines moving (share of machine-time)", "n_alerts": "Safety alerts", "n_flags": "Operational flags",
-           "camera": "Camera", "view": "View", "people_avg": "People avg", "idle_ratio": "Idle",
+           "camera": "Camera", "view": "View", "people_avg": "People avg", "stationary": "Machines standing still (avg)",
            "moving": "Machines moving", "time": "Scene time", "where": "Site / camera", "type": "Type",
            "severity": "Severity", "conf": "Confidence", "alert": "Alert", "ai_note":
            "Narrative by the text LLM; every table is computed directly from the analyzer data.",
@@ -244,9 +275,10 @@ LABELS = {
            "value": "数值", "key": "关键指标", "cams": "摄像头", "alerts": "安全告警",
            "flags": "瓶颈与资源冗余", "recs": "建议措施", "none_alerts": "范围内无安全告警。",
            "none_flags": "范围内无运营标记。", "none_recs": "范围内无建议。",
-           "people": "可见人数（平均）", "idle": "空闲人时占比", "idle_min": "空闲人·分钟",
+           "people": "可见人数（平均）", "agv_moving": "AGV 运行占比（按 AGV 时间）",
+           "agv_loaded": "AGV 载货占比（按 AGV 时间）", "reaction": "工人在最接近前开始躲避的时间",
            "machines": "设备运行占比（按设备时间）", "n_alerts": "安全告警", "n_flags": "运营标记",
-           "camera": "摄像头", "view": "视角", "people_avg": "平均人数", "idle_ratio": "空闲",
+           "camera": "摄像头", "view": "视角", "people_avg": "平均人数", "stationary": "静止设备（平均）",
            "moving": "设备运行", "time": "场景时间", "where": "站点 / 摄像头", "type": "类型",
            "severity": "严重度", "conf": "置信度", "alert": "告警", "ai_note":
            "叙述由文本大模型生成；所有表格直接由分析数据计算。",
@@ -286,13 +318,20 @@ def report_parts(snap: Snapshot, site_id: str | None, camera: str | None, lang: 
     for f in flags:
         flag_types[str(f.get("type"))] = flag_types.get(str(f.get("type")), 0) + 1
     people = agg["people_sum"] if floor else agg["people_mean"]
+    reactions = [e for e in events if (e.get("reaction") or {}).get("margin_sec") is not None]
     kpi = [f"| {L['metric']} | {L['value']} |", "|---|---|",
-           f"| {L['people']} | {people} |", f"| {L['idle']} | {pct(agg['idle_ratio'])} |",
-           f"| {L['idle_min']} | {agg['idle_person_min']} |", f"| {L['machines']} | {pct(agg['machine_moving_ratio'])} |",
-           f"| {L['n_alerts']} | {sev['high']} high · {sev['medium']} medium · {sev['low']} low |",
-           f"| {L['n_flags']} | {len(flags)}" + (" (" + ", ".join(f"{k} {v}" for k, v in flag_types.items()) + ")" if flags else "") + " |"]
+           f"| {L['n_alerts']} | {sev['high']} high · {sev['medium']} medium · {sev['low']} low |"]
+    if reactions:
+        kpi.append(f"| {L['reaction']} | " + ", ".join(f"{e.get('site_id')} {num(e['reaction']['margin_sec'])} s"
+                                                      for e in reactions) + " |")
+    if floor:
+        kpi += [f"| {L['machines']} | {pct(agg['machine_moving_ratio'])} |",
+                f"| {L['agv_moving']} | {pct(agg['agv_moving_ratio'])} |",
+                f"| {L['agv_loaded']} | {pct(agg['agv_loaded_ratio'])} |"]
+    kpi += [f"| {L['people']} | {people} |",
+            f"| {L['n_flags']} | {len(flags)}" + (" (" + ", ".join(f"{k} {v}" for k, v in flag_types.items()) + ")" if flags else "") + " |"]
 
-    cam_rows = [f"| {L['camera']} | {L['view']} | {L['people_avg']} | {L['idle_ratio']} | {L['moving']} | {L['idle_min']} |",
+    cam_rows = [f"| {L['camera']} | {L['view']} | {L['moving']} | {L['agv_moving']} | {L['agv_loaded']} | {L['stationary']} |",
                 "|---|---|---|---|---|---|"]
     by_site: dict[str, list[dict]] = {}
     for c in util:
@@ -300,14 +339,10 @@ def report_parts(snap: Snapshot, site_id: str | None, camera: str | None, lang: 
     for sid, cams in by_site.items():
         if camera or snap.site_kind(sid) == "continuous":
             for c in cams:
-                t = c.get("totals") or {}
-                cam_rows.append(f"| {sid}/{c.get('camera')} | {c.get('view')} | {num(t.get('people_avg'))} | "
-                                f"{pct(t.get('idle_ratio'))} | {pct(t.get('machine_moving_ratio'))} | "
-                                f"{round(num(t.get('idle_person_seconds')) / 60, 1)} |")
-        else:
-            a = _cam_totals(cams)
-            cam_rows.append(f"| {sid} ({len(cams)} views) | scenario | {a['people_mean']} | {pct(a['idle_ratio'])} | "
-                            f"{pct(a['machine_moving_ratio'])} | {a['idle_person_min']} |")
+                t, agv = c.get("totals") or {}, _fleet_type(c, "agv")
+                stationary = sum(num(d.get("stationary_avg")) for d in ((c.get("fleet") or {}).get("types") or {}).values())
+                cam_rows.append(f"| {sid}/{c.get('camera')} | {c.get('view')} | {pct(t.get('machine_moving_ratio'))} | "
+                                f"{pct(agv.get('moving_ratio'))} | {pct(agv.get('loaded_ratio'))} | {round(stationary, 2)} |")
 
     alert_rows = [f"| {L['time']} | {L['where']} | {L['type']} | {L['severity']} | {L['conf']} | {L['alert']} |",
                   "|---|---|---|---|---|---|"]
@@ -456,7 +491,8 @@ class Copilot:
         prompt = (f"DATA for {p['title']}:\n{data}\n\nWrite exactly these Markdown sections and nothing else:\n"
                   f"## {L['s_summary']}\n3-5 bullets, most important first.\n"
                   f"## {L['s_safety']}\n2-4 bullets (write '{L['none_alerts']}' if there are none).\n"
-                  f"## {L['s_prod']}\n2-4 bullets on idle labor, machine utilization, congestion and underused zones.\n"
+                  f"## {L['s_prod']}\n2-4 bullets on fleet efficiency: AGV/AMR/humanoid moving and loaded shares, "
+                  f"machines standing still, congestion and underused zones.\n"
                   f"## {L['s_actions']}\n3-5 numbered actions, each tied to an id.\n"
                   f"No tables, no title. {lang_line}")
         narrative = self._chat(REPORT_SYSTEM, prompt, 3000)
