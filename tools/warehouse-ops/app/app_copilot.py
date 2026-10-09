@@ -1,8 +1,9 @@
 """Grounded Q&A and shift reports.
 
 Ask: compact facts from the analyzer files + VSS semantic search over both locations, answered by
-Cosmos3-Reason (text) under "use ONLY these facts and clips". Fallbacks keep the demo alive: the
-search's own LLM synthesis, then VSS /agent/ask, then a deterministic answer from the data.
+the text LLM (W&B Inference, falling back to Cosmos3-Reason) under "use ONLY these facts and clips".
+Fallbacks keep the demo alive: the search's own LLM synthesis, then VSS /agent/ask, then a
+deterministic answer from the data.
 
 Report: deterministic metrics tables computed from the data, plus an LLM narrative whose numbers
 are checked against those tables. Results are cached per data version and scope.
@@ -24,8 +25,8 @@ from app_live import Clients, LiveSources, parse_site_camera, safe_error
 log = logging.getLogger("wops.copilot")
 LOCATIONS = ("indoor", "warehouse3")
 SEARCH_TIMEOUT = 25
-ASK_LLM_TIMEOUT = 45
-REPORT_LLM_TIMEOUT = 75
+ASK_LLM_TIMEOUT = 90
+REPORT_LLM_TIMEOUT = 120
 AGENT_TIMEOUT = 25
 
 ASK_SYSTEM = (
@@ -234,7 +235,7 @@ LABELS = {
            "camera": "Camera", "view": "View", "people_avg": "People avg", "idle_ratio": "Idle",
            "moving": "Machines moving", "time": "Scene time", "where": "Site / camera", "type": "Type",
            "severity": "Severity", "conf": "Confidence", "alert": "Alert", "ai_note":
-           "Narrative by Cosmos3-Reason; every table is computed directly from the analyzer data.",
+           "Narrative by the text LLM; every table is computed directly from the analyzer data.",
            "tmpl_note": "Metrics-only report computed directly from the analyzer data.",
            "s_summary": "Executive summary", "s_safety": "Safety", "s_prod": "Productivity & bottlenecks",
            "s_actions": "Actions for next shift"},
@@ -248,7 +249,7 @@ LABELS = {
            "camera": "摄像头", "view": "视角", "people_avg": "平均人数", "idle_ratio": "空闲",
            "moving": "设备运行", "time": "场景时间", "where": "站点 / 摄像头", "type": "类型",
            "severity": "严重度", "conf": "置信度", "alert": "告警", "ai_note":
-           "叙述由 Cosmos3-Reason 生成；所有表格直接由分析数据计算。",
+           "叙述由文本大模型生成；所有表格直接由分析数据计算。",
            "tmpl_note": "纯指标报告，直接由分析数据计算。",
            "s_summary": "执行摘要", "s_safety": "安全", "s_prod": "效率与瓶颈", "s_actions": "下一班次行动"},
 }
@@ -353,12 +354,15 @@ class Copilot:
         self._reports: dict[tuple, dict] = {}
         self._inflight: dict[tuple, Future] = {}
 
+    def _llm_ready(self) -> bool:
+        return bool(getattr(self.clients.llm, "available", True))
+
     def _chat(self, system: str, user: str, max_tokens: int) -> str | None:
         try:
-            text = clean_llm(self.clients.cosmos.chat(user, max_tokens=max_tokens, temperature=0.2, system=system, retries=1))
+            text = clean_llm(self.clients.llm.chat(user, max_tokens=max_tokens, temperature=0.2, system=system, retries=1))
             return text or None
         except Exception as e:  # noqa: BLE001
-            log.warning("cosmos chat failed: %s", safe_error(e))
+            log.warning("text llm chat failed: %s", safe_error(e))
             return None
 
     # ------------------------------------------------------------------ ask
@@ -411,19 +415,19 @@ class Copilot:
             clips, synthesis = [], None
             notes.append("video search unavailable")
         answer, engine = None, None
-        if self.clients.cosmos.available:
+        if self._llm_ready():
             clip_lines = [f"[clip{i}] {c['site_id']}/{c['camera']} scene {fmt_t(c['scene_t'])} "
                           f"(similarity {c['score']}): {c['caption']}" for i, c in enumerate(clips, 1)] or ["(no clips found)"]
             lang_line = "Answer in Simplified Chinese." if lang == "zh" else "Answer in the language of the question."
             prompt = (f"FACTS (from the warehouse video analyzer):\n{facts_block(snap)}\n\n"
                       "CLIPS (semantic video-search hits; captions are machine-generated and may miss hazards):\n"
                       + "\n".join(clip_lines) + f"\n\nQUESTION: {question}\n\n{lang_line} Cite ids in square brackets.")
-            fut = self._ask_llm.submit(self._chat, ASK_SYSTEM, prompt, 700)
+            fut = self._ask_llm.submit(self._chat, ASK_SYSTEM, prompt, 3000)
             try:
                 answer = fut.result(timeout=ASK_LLM_TIMEOUT)
             except FutureTimeout:
                 notes.append("language model timed out")
-            engine = "cosmos" if answer else None
+            engine = "llm" if answer else None
         if not answer and synthesis:
             answer, engine = clean_llm(synthesis), "vss_search"
         if not answer:
@@ -455,19 +459,19 @@ class Copilot:
                   f"## {L['s_prod']}\n2-4 bullets on idle labor, machine utilization, congestion and underused zones.\n"
                   f"## {L['s_actions']}\n3-5 numbered actions, each tied to an id.\n"
                   f"No tables, no title. {lang_line}")
-        narrative = self._chat(REPORT_SYSTEM, prompt, 1200)
+        narrative = self._chat(REPORT_SYSTEM, prompt, 3000)
         if not narrative:
             return None
         narrative = re.sub(r"^\s*#\s[^\n]*\n", "", narrative).strip()
         checked, unverified = verify_numbers(narrative, data + "\n" + p["meta"])
         md = f"# {p['title']}\n_{p['meta']}_\n\n_{p['L']['ai_note']}_\n\n{narrative}\n\n{_tables(p, False)}"
-        return {"markdown": md, "engine": "cosmos", "numbers_checked": checked, "numbers_unverified": unverified}
+        return {"markdown": md, "engine": "llm", "numbers_checked": checked, "numbers_unverified": unverified}
 
     def report(self, snap: Snapshot, site_id: str | None, camera: str | None, mode: str = "ai",
                lang: str = "en", timeout: float = REPORT_LLM_TIMEOUT) -> dict:
         lang = "zh" if lang == "zh" else "en"
         site_id = None if site_id in (None, "", "all") else site_id
-        if mode == "template" or not self.clients.cosmos.available:
+        if mode == "template" or not self._llm_ready():
             return self._fallback_report(snap, site_id, camera, lang, mode)
         key = (snap.version, site_id or "all", camera or "", lang)
         with self._lock:
@@ -505,7 +509,7 @@ class Copilot:
 
     def warm_reports(self, snap: Snapshot) -> None:
         """Pre-generate site-level reports so the demo never waits on the first click."""
-        if not self.clients.cosmos.available:
+        if not self._llm_ready():
             return
         for site_id in [None] + [str(s.get("site_id")) for s in snap.sites]:
             self.report(snap, site_id, None, "ai", "en", timeout=REPORT_LLM_TIMEOUT * 2)

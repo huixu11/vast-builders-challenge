@@ -161,6 +161,9 @@ def health() -> dict:
     snap = store.snapshot()
     return {"ok": True, "data_dir_kind": snap.kind, "version": snap.version,
             "vss": {"ready": clients.vss_ready, **live.status()}, "cosmos": clients.cosmos.available,
+            "llm": {"available": bool(getattr(clients.llm, "available", True)),
+                    "kind": type(clients.llm).__name__,
+                    "model": getattr(clients.llm, "_model", None) or ""},
             "clip_cache": clips.status()}
 
 

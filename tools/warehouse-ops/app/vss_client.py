@@ -56,24 +56,28 @@ def setting(name: str, *config_keys: str, default: str = "") -> str:
 
 def _reachable(url: str) -> bool:
     try:
-        return requests.get(url.rstrip("/") + "/health", timeout=8).status_code == 200
+        return requests.get(url.rstrip("/") + "/health", timeout=4).status_code == 200
     except requests.RequestException:
         return False
 
 
+def _public_backend() -> str:
+    pipeline = setting("PIPELINE")
+    return f"https://{pipeline}.thecosmoslabs.com" if pipeline else ""
+
+
 def _resolve_backend() -> str:
-    explicit = os.environ.get("VSS_URL")
-    if explicit:
-        return explicit.rstrip("/")
-    ingress = _CFG.get("INGRESS_URL", "").rstrip("/")
-    if ingress and _reachable(ingress):
-        return ingress
-    pipeline = _CFG.get("PIPELINE", "")
-    if pipeline:
-        public = f"https://{pipeline}.thecosmoslabs.com"
-        if _reachable(public):
-            return public
-    return ingress
+    # Prefer VSS_URL / INGRESS_URL, but the in-cluster ingress is often unreachable from the
+    # app pod; fall back to the public PIPELINE host the laptop already uses.
+    candidates: list[str] = []
+    for url in (os.environ.get("VSS_URL", ""), _CFG.get("INGRESS_URL", ""), _public_backend()):
+        url = url.rstrip("/")
+        if url and url not in candidates:
+            candidates.append(url)
+    for url in candidates:
+        if _reachable(url):
+            return url
+    return candidates[0] if candidates else ""
 
 
 class VSS:

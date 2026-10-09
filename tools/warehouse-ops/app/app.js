@@ -8,7 +8,7 @@
       tagline: "Video-grounded safety & efficiency · NVIDIA VSS on VAST",
       nav_overview: "Overview", nav_alerts: "Safety alerts", nav_resources: "Resources & bottlenecks",
       nav_replay: "Multi-camera replay", nav_ask: "Ask", nav_report: "Shift report",
-      live: "LIVE", data_real: "Analyzer data", data_mock: "Mock data", vss: "VSS", cosmos: "Cosmos",
+      live: "LIVE", data_real: "Analyzer data", data_mock: "Mock data", vss: "VSS", cosmos: "LLM",
       loading: "Loading warehouse data…", retry: "Retry", error_load: "Could not load data from the backend.",
       timeout: "Request timed out", updated: "New analyzer results loaded", refresh_view: "Refresh view",
       kpi_people: "People on floor now", kpi_people_sub: "avg {avg} · {n} floor cameras · window ending {t}",
@@ -55,30 +55,32 @@
       events_title: "Events at this site", replay_hint: "Click a tile to enlarge it", no_videos: "No videos indexed yet.",
       ask_title: "Ask the warehouse", ask_ph: "Ask about safety, idle labor, machines, bottlenecks…", send: "Send",
       suggested: "Suggested questions", think1: "Searching the video archive…", think2: "Grounding on analyzer facts…",
-      think3: "Reasoning with Cosmos3-Reason…",
-      engine_cosmos: "Cosmos3-Reason · grounded on analyzer facts + video search",
+      think3: "Reasoning with the language model…",
+      engine_llm: "Language model · grounded on analyzer facts + video search",
+      engine_cosmos: "Language model · grounded on analyzer facts + video search",
       engine_vss_search: "VSS search synthesis", engine_vss_agent: "VSS agent", engine_rules: "Offline answer from analyzer data",
       clips: "Matching clips", cited: "Cited", ask_error: "The copilot could not answer right now.",
       how_title: "How answers are grounded",
       how_1: "Facts: safety alerts, flags, per-camera metrics and recommendations from the analyzer.",
       how_2: "Video search: VSS hybrid search over both locations finds matching clips.",
-      how_3: "Cosmos3-Reason answers using only those facts and clips and cites their ids.",
+      how_3: "The language model answers using only those facts and clips and cites their ids.",
       ask_welcome: "Ask anything about safety, labor and machines in the analyzed footage. Answers cite the alerts, flags and clips they rely on.",
       q1: "Which camera has the most idle workers?", q2: "Show forklift near-misses", q3: "Where should I move idle workers?",
       q4: "Was anyone hit by a forklift?", q5: "Are AGVs or robots sitting idle anywhere?",
-      report_scope: "Report scope", all_cams: "All cameras", gen_ai: "Generate with Cosmos", metrics_only: "Metrics only",
-      copy: "Copy", download: "Download .md", print: "Print", writing: "Cosmos3-Reason is writing the narrative…",
+      report_scope: "Report scope", all_cams: "All cameras", gen_ai: "Generate with AI", metrics_only: "Metrics only",
+      copy: "Copy", download: "Download .md", print: "Print", writing: "The language model is writing the narrative…",
       verified: "{n} numbers in the narrative checked against analyzer data",
       unverified: "{n} numbers not found in the data: {list}",
       engine_template: "Metrics-only report (deterministic)", engine_analyzer: "Analyzer shift report",
-      engine_cosmos_r: "Cosmos3-Reason narrative + computed tables", copied: "Copied to clipboard", cached: "cached",
+      engine_llm_r: "AI narrative + computed tables",
+      engine_cosmos_r: "AI narrative + computed tables", copied: "Copied to clipboard", cached: "cached",
       report_fail: "AI narrative unavailable — showing the metrics-only report.",
     },
     zh: {
       tagline: "基于视频的安全与效率洞察 · NVIDIA VSS on VAST",
       nav_overview: "总览", nav_alerts: "安全告警", nav_resources: "资源与瓶颈",
       nav_replay: "多机位回放", nav_ask: "问答", nav_report: "班次报告",
-      live: "实时", data_real: "分析数据", data_mock: "模拟数据", vss: "VSS", cosmos: "Cosmos",
+      live: "实时", data_real: "分析数据", data_mock: "模拟数据", vss: "VSS", cosmos: "LLM",
       loading: "正在加载仓库数据…", retry: "重试", error_load: "无法从后端加载数据。",
       timeout: "请求超时", updated: "已加载新的分析结果", refresh_view: "刷新视图",
       kpi_people: "当前在场人数", kpi_people_sub: "平均 {avg} · {n} 个地面摄像头 · 截至 {t}",
@@ -124,22 +126,24 @@
       eye_views: "平视视角", speed: "速度", buffering: "缓冲中…", sync_note: "所有视角共享同一时钟",
       events_title: "该站点的事件", replay_hint: "点击画面可放大", no_videos: "尚无已索引的视频。",
       ask_title: "向仓库提问", ask_ph: "询问安全、空闲人力、设备、瓶颈…", send: "发送",
-      suggested: "推荐问题", think1: "正在检索视频库…", think2: "正在结合分析数据…", think3: "Cosmos3-Reason 推理中…",
-      engine_cosmos: "Cosmos3-Reason · 基于分析数据与视频检索",
+      suggested: "推荐问题", think1: "正在检索视频库…", think2: "正在结合分析数据…",       think3: "语言模型推理中…",
+      engine_llm: "语言模型 · 基于分析数据与视频检索",
+      engine_cosmos: "语言模型 · 基于分析数据与视频检索",
       engine_vss_search: "VSS 检索综合", engine_vss_agent: "VSS 智能体", engine_rules: "基于分析数据的离线回答",
       clips: "相关片段", cited: "引用", ask_error: "Copilot 暂时无法回答。",
       how_title: "回答如何溯源",
       how_1: "事实：来自分析器的安全告警、运营标记、各摄像头指标和建议。",
       how_2: "视频检索：VSS 混合检索覆盖两个地点，找到相关片段。",
-      how_3: "Cosmos3-Reason 仅依据这些事实和片段作答，并引用其编号。",
+      how_3: "语言模型仅依据这些事实和片段作答，并引用其编号。",
       ask_welcome: "可以询问已分析视频中的安全、人力和设备情况。回答会引用所依据的告警、标记和片段。",
       q1: "哪个摄像头的空闲工人最多？", q2: "显示叉车险情", q3: "我应该把空闲工人调到哪里？",
       q4: "有人被叉车撞到吗？", q5: "有没有闲置的 AGV 或机器人？",
-      report_scope: "报告范围", all_cams: "全部摄像头", gen_ai: "用 Cosmos 生成", metrics_only: "仅指标",
-      copy: "复制", download: "下载 .md", print: "打印", writing: "Cosmos3-Reason 正在撰写叙述…",
+      report_scope: "报告范围", all_cams: "全部摄像头", gen_ai: "用 AI 生成", metrics_only: "仅指标",
+      copy: "复制", download: "下载 .md", print: "打印", writing: "语言模型正在撰写叙述…",
       verified: "叙述中的 {n} 个数字已与分析数据核对", unverified: "{n} 个数字未在数据中找到：{list}",
       engine_template: "纯指标报告（确定性）", engine_analyzer: "分析器班次报告",
-      engine_cosmos_r: "Cosmos3-Reason 叙述 + 计算表格", copied: "已复制到剪贴板", cached: "已缓存",
+      engine_llm_r: "AI 叙述 + 计算表格",
+      engine_cosmos_r: "AI 叙述 + 计算表格", copied: "已复制到剪贴板", cached: "已缓存",
       report_fail: "AI 叙述暂不可用——显示纯指标报告。",
     },
   };
@@ -361,8 +365,9 @@
     const v = $("#vssPill"), c = $("#cosmosPill");
     v.classList.toggle("ok", vssOk); v.classList.toggle("bad", !vssOk);
     v.title = vssOk ? `${h.vss.chunks} chunks in the live VSS inventory` : "VSS unreachable — using stored URIs";
-    c.classList.toggle("ok", !!h?.cosmos); c.classList.toggle("bad", !h?.cosmos);
-    c.title = h?.cosmos ? "Cosmos3-Reason available" : "Cosmos3-Reason unavailable — fallbacks active";
+    const llmOk = !!(h?.llm?.available || h?.cosmos);
+    c.classList.toggle("ok", llmOk); c.classList.toggle("bad", !llmOk);
+    c.title = llmOk ? (h?.llm?.model || h?.llm?.kind || "text LLM available") : "Language model unavailable — fallbacks active";
   }
 
   function applyStatic() {
@@ -1363,7 +1368,7 @@
   }
 
   // ===================================================================== ask
-  const ENGINE_LABEL = { cosmos: "engine_cosmos", vss_search: "engine_vss_search", vss_agent: "engine_vss_agent", rules: "engine_rules" };
+  const ENGINE_LABEL = { llm: "engine_llm", cosmos: "engine_cosmos", vss_search: "engine_vss_search", vss_agent: "engine_vss_agent", rules: "engine_rules" };
 
   function renderAsk(el, arg) {
     el.innerHTML = `
@@ -1533,7 +1538,7 @@
         if (reportKey("") === scope && $("#rStatus")) $("#rStatus").innerHTML = `<div class="badge warn">${tr("report_fail")}</div>`;
         return;
       }
-      if (mode === "template" || res.engine === "cosmos") P.cache[key] = res;
+      if (mode === "template" || res.engine === "llm" || res.engine === "cosmos") P.cache[key] = res;
       if (reportKey("") === scope && S.view === "report") showReport(res);
     } catch (e) {
       if ($("#rStatus") && reportKey("") === scope) $("#rStatus").innerHTML = `<div class="badge warn">${esc(e.message)}</div>`;
@@ -1546,9 +1551,9 @@
     S.report.current = res;
     doc.innerHTML = md(res.markdown, (id) => idChip(id));
     linkIds(doc);
-    const engine = { cosmos: "engine_cosmos_r", analyzer: "engine_analyzer" }[res.engine] || "engine_template";
+    const engine = { llm: "engine_llm_r", cosmos: "engine_cosmos_r", analyzer: "engine_analyzer" }[res.engine] || "engine_template";
     let badges = `<div class="badge engine-${esc(res.engine)}">${ICON.spark}${tr(engine)}${res.cached ? ` · ${tr("cached")}` : ""}</div>`;
-    if (res.engine === "cosmos") {
+    if (res.engine === "llm" || res.engine === "cosmos") {
       const bad = res.numbers_unverified || [];
       badges += bad.length
         ? `<div class="badge warn">${ICON.alert}${esc(tr("unverified", { n: bad.length, list: bad.join(", ") }))}</div>`

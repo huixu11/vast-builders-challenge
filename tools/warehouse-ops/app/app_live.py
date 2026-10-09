@@ -34,6 +34,11 @@ IGNORED_LABELS = {
     "cup", "fork", "knife", "spoon", "bowl", "bottle", "banana", "apple", "sandwich", "orange", "broccoli",
     "carrot", "hot dog", "pizza", "donut", "cake", "handbag", "backpack",
 }
+# COCO names that fire on stackers, AGVs and loads here; shown under a neutral name instead of e.g. "suitcase".
+DISPLAY_LABELS = {
+    "truck": "vehicle", "car": "vehicle", "bus": "vehicle", "train": "vehicle", "motorcycle": "vehicle",
+    "bicycle": "vehicle", "boat": "vehicle", "suitcase": "object", "chair": "object", "bench": "object",
+}
 
 
 def parse_site_camera(filename: str) -> tuple[str, str] | None:
@@ -61,6 +66,7 @@ class Clients:
         self._vss: vss_client.VSS | None = None
         self._failed_at = 0.0
         self.cosmos = vss_client.Cosmos()
+        self.llm = vss_client.text_llm()
 
     def vss(self) -> vss_client.VSS:
         if self._vss is not None:
@@ -204,7 +210,7 @@ def compact_detections(raw: dict | None, stride: int) -> dict:
             if len(bbox) < 4 or (label != "person" and (conf < 0.3 or label in IGNORED_LABELS)):
                 continue
             boxes.append([round(num(bbox[0])), round(num(bbox[1])), round(num(bbox[2])), round(num(bbox[3])),
-                          label, round(conf, 2)])
+                          DISPLAY_LABELS.get(label, label), round(conf, 2)])
         frames.append({"t": round(t, 3), "boxes": boxes})
     return {"fps": fps, "width": int(num(shape[1], 1920)), "height": int(num(shape[0], 1080)), "frames": frames,
             "available": True}

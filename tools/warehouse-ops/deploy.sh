@@ -61,6 +61,7 @@ fi
   echo "VSS_USERNAME=$TEAM_USER"
   echo "VSS_PASSWORD=$(cfg PASSWORD)"
   echo "GPU_BEARER_TOKEN=$(cfg GPU_BEARER_TOKEN)"
+  echo "PIPELINE=$(cfg PIPELINE)"
   for key in WANDB_API_KEY WANDB_TEAM WANDB_PROJECT WANDB_MODEL; do
     value="$(env_or_cfg "$key")"
     if [[ -n "$value" ]]; then echo "$key=$value"; fi
@@ -69,6 +70,7 @@ fi
 kubectl -n "$NS" create secret generic "${APP_NAME}-vss-creds" --from-env-file="$ENV_FILE" --dry-run=client -o yaml \
   | kubectl apply --server-side --force-conflicts -f -
 
+EXISTED="$(kubectl -n "$NS" get deploy "$APP_NAME" -o name 2>/dev/null || true)"
 kubectl -n "$NS" apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
@@ -154,9 +156,22 @@ spec:
             port: {number: 80}
 EOF
 
-kubectl -n "$NS" rollout restart deploy/"$APP_NAME"
+# A running pod does not reload ConfigMaps, so restart it on redeploys.
+if [[ -n "$EXISTED" ]]; then kubectl -n "$NS" rollout restart deploy/"$APP_NAME"; fi
 kubectl -n "$NS" rollout status deploy/"$APP_NAME" --timeout=300s \
   || { kubectl -n "$NS" logs -l app="$APP_NAME" --tail=80 || true; exit 1; }
 kubectl -n "$NS" get pods,svc,ingress -l app="$APP_NAME"
-curl -sS -o /dev/null -w "GET http://${APP_HOST}/app/health -> %{http_code}\n" "http://${APP_HOST}/app/health" || true
+
+# The ingress controller needs a few seconds to pick up a new Ingress or endpoint.
+CODE=000
+for _ in $(seq 1 20); do
+  CODE="$(curl -sS -o /dev/null -w '%{http_code}' "http://${APP_HOST}/app/health" || true)"
+  [[ "$CODE" == 200 ]] && break
+  sleep 3
+done
+echo "GET http://${APP_HOST}/app/health -> ${CODE}"
+if [[ "$CODE" != 200 ]]; then
+  kubectl -n "$NS" get endpoints "$APP_NAME" || true
+  kubectl -n "$NS" logs -l app="$APP_NAME" --tail=40 || true
+fi
 echo "Open https://workshop.thecosmoslabs.com and click the App button."
