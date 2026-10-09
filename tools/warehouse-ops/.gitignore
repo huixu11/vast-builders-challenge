@@ -1,0 +1,5 @@
+.cache/
+demo/out/
+__pycache__/
+*.mp4
+*.part
