@@ -227,8 +227,8 @@ class WandB:
     """
 
     PREFERRED_MODELS = (
-        "openai/gpt-oss-120b",
         "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B",
+        "openai/gpt-oss-120b",
         "Qwen/Qwen3-235B-A22B-Instruct-2507",
         "deepseek-ai/DeepSeek-V3.1",
         "deepseek-ai/DeepSeek-V3-0324",
